@@ -2,6 +2,16 @@
 
 A **Role-Based Task Management Backend** built using **FastAPI** and **PostgreSQL**, implementing **JWT Authentication** and **Role-Based Access Control (RBAC)**.
 
+
+<img width="1920" height="1080" alt="Screenshot (1342)" src="https://github.com/user-attachments/assets/73c9e726-cb9d-4771-8217-59f80c5cadd0" />
+<img width="1920" height="1080" alt="Screenshot (1342)" src="https://github.com/user-attachments/assets/73c9e726-cb9d-4771-8217-59f80c5cadd0" />
+<img width="1920" height="1080" alt="Screenshot (1343)" src="https://github.com/user-attachments/assets/8dd910bb-8dbb-4e7f-ab9b-5951b2d917f8" />
+<img width="1920" height="1080" alt="Screenshot (1343)" src="https://github.com/user-attachments/assets/8dd910bb-8dbb-4e7f-ab9b-5951b2d917f8" />
+<img width="1920" height="1080" alt="Screenshot (1341)" src="https://github.com/user-attachments/assets/302dfc03-46fd-4240-b859-53f7aa75c1b5" />
+<img width="1920" height="1080" alt="Screenshot (1341)" src="https://github.com/user-attachments/assets/302dfc03-46fd-4240-b859-53f7aa75c1b5" />
+<img width="1920" height="1080" alt="Screenshot (1340)" src="https://github.com/user-attachments/assets/56d49526-dec1-4a86-99f5-be58cf6257d0" />
+<img width="1920" height="1080" alt="Screenshot (1340)" src="https://github.com/user-attachments/assets/56d49526-dec1-4a86-99f5-be58cf6257d0" />
+
 ---
 
 ## 🚀 Features
