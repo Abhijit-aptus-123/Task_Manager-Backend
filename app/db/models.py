@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from .database import Base
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -9,6 +10,9 @@ class User(Base):
     email = Column(String, unique=True)
     password = Column(String)
     role = Column(String, default="user")
+
+    # 🔥 Back reference (optional but recommended)
+    tasks = relationship("Task", back_populates="assigned_user")
 
 
 class Task(Base):
@@ -19,3 +23,6 @@ class Task(Base):
     description = Column(String)
     status = Column(String, default="todo")
     assigned_user_id = Column(Integer, ForeignKey("users.id"))
+
+    # 🔥 Relationship to fetch user email
+    assigned_user = relationship("User", back_populates="tasks")

@@ -86,7 +86,14 @@ def update_user_role(
     if role not in ["admin", "user"]:
         raise HTTPException(status_code=400, detail="Invalid role")
 
-    # ✅ Update role
+    # 🚫 Prevent admin → user downgrade
+    if user.role == "admin" and role == "user":
+        raise HTTPException(
+            status_code=400,
+            detail="Admin role cannot be changed to user"
+        )
+
+    # ✅ Allow update (user → admin)
     user.role = role
 
     db.commit()
