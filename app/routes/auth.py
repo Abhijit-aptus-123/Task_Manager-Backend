@@ -1,23 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from sqlalchemy.orm import Session
+from datetime import timedelta
+from jose import jwt
 
 from app.db.database import get_db
-from app.schemas.user import UserCreate, UserLogin
-from app.services.auth_service import register_user, login_user, refresh_access_token
+from app.db.models import User
+from app.schemas.user import UserLogin
+from app.services.auth_service import login_user
+from app.core.config import SECRET_KEY, ALGORITHM
+from app.core.security import create_access_token
+from app.core.dependencies import get_current_user
 
 router = APIRouter()
-
-
-# ======================
-# PUBLIC REGISTER
-# ======================
-@router.post("/auth/register")
-def register(data: UserCreate, db: Session = Depends(get_db)):
-    user = register_user(data, db)
-    return {
-        "message": "User registered successfully",
-        "user_id": user.id
-    }
 
 
 # ======================
@@ -27,7 +21,7 @@ def register(data: UserCreate, db: Session = Depends(get_db)):
 def login(
     data: UserLogin,
     db: Session = Depends(get_db),
-    response: Response = None   # ⚠️ FastAPI injects it automatically
+    response: Response = None
 ):
     tokens = login_user(data, db)
 
@@ -36,41 +30,77 @@ def login(
 
     access_token, refresh_token = tokens
 
-    # 🍪 Set cookies
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        samesite="lax"
-    )
-
+    # ✅ Store ONLY refresh token in cookie
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        samesite="lax"
+        max_age=7 * 24 * 60 * 60,
+        samesite="none",
+        secure=True
     )
 
-    return {"message": "Login successful"}
+    # ✅ Return access token
+    return {
+        "message": "Login successful",
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
 
 
 # ======================
 # REFRESH TOKEN
 # ======================
 @router.post("/auth/refresh")
-def refresh(request: Request, response: Response):
+def refresh(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db)
+):
     refresh_token = request.cookies.get("refresh_token")
 
     if not refresh_token:
         raise HTTPException(status_code=401, detail="No refresh token")
 
-    new_access_token = refresh_access_token(refresh_token)
+    try:
+        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
 
-    response.set_cookie(
-        key="access_token",
-        value=new_access_token,
-        httponly=True,
-        samesite="lax"
-    )
+        user_id = int(payload["sub"])
 
-    return {"message": "Access token refreshed"}
+        user = db.query(User).filter(User.id == user_id).first()
+
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+
+        # ✅ Create new access token
+        new_access_token = create_access_token(
+            {"sub": str(user.id)},
+            timedelta(minutes=30)
+        )
+
+        # ✅ Return access token (NO cookie for access token)
+        return {
+            "message": "Token refreshed",
+            "access_token": new_access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "role": user.role
+            }
+        }
+
+    except:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+
+# ======================
+# CURRENT USER
+# ======================
+@router.get("/auth/me")
+def get_me(current_user: User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "role": current_user.role
+    }
