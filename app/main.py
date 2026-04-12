@@ -64,14 +64,14 @@ def login(data: UserLogin,
 
     access_token, refresh_token = tokens
 
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        max_age=1800,
-        samesite="none",
-        secure=True
-    )
+    # response.set_cookie(
+    #     key="access_token",
+    #     value=access_token,
+    #     httponly=True,
+    #     max_age=1800,
+    #     samesite="none",
+    #     secure=True
+    # )
 
     response.set_cookie(
         key="refresh_token",
@@ -118,14 +118,14 @@ def refresh(
         )
 
         # ✅ Set cookie
-        response.set_cookie(
-            key="access_token",
-            value=new_access_token,
-            httponly=True,
-            max_age=1800,
-            samesite="none",
-            secure=True
-        )
+        # response.set_cookie(
+        #     key="access_token",
+        #     value=new_access_token,
+        #     httponly=True,
+        #     max_age=1800,
+        #     samesite="none",
+        #     secure=True
+        # )
 
         # ✅ Return token + user info
         return {
