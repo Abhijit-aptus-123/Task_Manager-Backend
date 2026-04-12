@@ -6,6 +6,7 @@ from jose import jwt
 
 # DB
 from app.db.database import Base, engine, get_db
+from app.db.models import User  # ✅ IMPORTANT
 
 # Schemas
 from app.schemas.user import UserCreate, UserLogin
@@ -13,7 +14,6 @@ from app.schemas.task import TaskCreate, TaskUpdate
 
 # Services
 from app.services.auth_service import (
-    register_user,
     login_user,
     admin_create_user
 )
@@ -23,7 +23,7 @@ from app.services.task_service import (
     update_task,
     delete_task
 )
-from app.db.models import User
+
 # Auth
 from app.core.dependencies import get_current_user
 from app.core.config import SECRET_KEY, ALGORITHM
@@ -32,9 +32,8 @@ from app.core.security import create_access_token
 app = FastAPI()
 
 # ======================
-# ✅ CORS CONFIG (IMPORTANT)
+# ✅ CORS CONFIG
 # ======================
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -51,23 +50,8 @@ app.add_middleware(
 Base.metadata.create_all(bind=engine)
 
 # ======================
-# AUTH ENDPOINTS
+# AUTH - LOGIN
 # ======================
-
-# ✅ PUBLIC REGISTER (only user)
-@app.post("/auth/register")
-def register(data: UserCreate,
-             db: Session = Depends(get_db)):
-
-    new_user = register_user(data, db)
-
-    return {
-        "message": "User registered successfully",
-        "user_id": new_user.id
-    }
-
-
-# ✅ LOGIN → Set Cookies
 @app.post("/auth/login")
 def login(data: UserLogin,
           response: Response,
@@ -85,8 +69,8 @@ def login(data: UserLogin,
         value=access_token,
         httponly=True,
         max_age=1800,
-        samesite="none",   # 🔥 IMPORTANT for cross-origin
-        secure=True        # 🔥 REQUIRED for HTTPS (Cloudflare)
+        samesite="none",
+        secure=True
     )
 
     response.set_cookie(
@@ -94,16 +78,22 @@ def login(data: UserLogin,
         value=refresh_token,
         httponly=True,
         max_age=7 * 24 * 60 * 60,
-        samesite="none",   # 🔥 IMPORTANT
-        secure=True        # 🔥 REQUIRED
+        samesite="none",
+        secure=True
     )
 
     return {"message": "Login successful"}
 
 
-# ✅ REFRESH TOKEN
+# ======================
+# AUTH - REFRESH TOKEN
+# ======================
 @app.post("/auth/refresh")
-def refresh(request: Request, response: Response):
+def refresh(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db)
+):
 
     refresh_token = request.cookies.get("refresh_token")
 
@@ -113,11 +103,21 @@ def refresh(request: Request, response: Response):
     try:
         payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
 
+        user_id = int(payload["sub"])
+
+        # ✅ Fetch user
+        user = db.query(User).filter(User.id == user_id).first()
+
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+
+        # ✅ Create new access token
         new_access_token = create_access_token(
-            {"sub": payload["sub"]},
+            {"sub": str(user.id)},
             timedelta(minutes=30)
         )
 
+        # ✅ Set cookie
         response.set_cookie(
             key="access_token",
             value=new_access_token,
@@ -127,17 +127,37 @@ def refresh(request: Request, response: Response):
             secure=True
         )
 
-        return {"message": "Token refreshed"}
+        # ✅ Return token + user info
+        return {
+            "message": "Token refreshed",
+            "access_token": new_access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "role": user.role
+            }
+        }
 
     except:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
 
 # ======================
-# ADMIN ENDPOINTS
+# AUTH - GET CURRENT USER
 # ======================
+@app.get("/auth/me")
+def get_me(current_user: User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "role": current_user.role
+    }
 
-# ✅ ADMIN CREATE USER / ADMIN
+
+# ======================
+# ADMIN - CREATE USER
+# ======================
 @app.post("/admin/users")
 def create_user(
     data: UserCreate,
@@ -148,63 +168,23 @@ def create_user(
     if not current_user or current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Only admin allowed")
 
-    new_user = admin_create_user(data, db)
+    user = admin_create_user(data, db)
 
     return {
-        "message": "User created by admin",
-        "user_id": new_user.id
+        "message": "User created",
+        "user_id": user.id
     }
 
-
-# ======================
-# TASK ENDPOINTS
-# ======================
-
-@app.post("/tasks")
-def create(data: TaskCreate,
-           user=Depends(get_current_user),
-           db: Session = Depends(get_db)):
-    return create_task(data, user, db)
-
-
-@app.get("/tasks")
-def read(user=Depends(get_current_user),
-         db: Session = Depends(get_db)):
-    return get_tasks(user, db)
-
-
-@app.put("/tasks/{task_id}")
-def update(task_id: int,
-           data: TaskUpdate,
-           user=Depends(get_current_user),
-           db: Session = Depends(get_db)):
-    return update_task(task_id, data, user, db)
-
-
-@app.delete("/tasks/{task_id}")
-def delete(task_id: int,
-           user=Depends(get_current_user),
-           db: Session = Depends(get_db)):
-    return delete_task(task_id, user, db)
-
-@app.get("/auth/me")
-def get_me(current_user: User = Depends(get_current_user)):
-    return {
-        "email": current_user.email,
-        "role": current_user.role
-    }
-
-from app.db.models import User  # make sure this import exists
 
 # ======================
 # ADMIN - GET ALL USERS
 # ======================
-
 @app.get("/admin/users")
 def get_all_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+
     if not current_user or current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Only admin allowed")
 
@@ -218,3 +198,42 @@ def get_all_users(
         }
         for user in users
     ]
+
+
+# ======================
+# TASK ENDPOINTS
+# ======================
+@app.post("/tasks")
+def create(
+    data: TaskCreate,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return create_task(data, user, db)
+
+
+@app.get("/tasks")
+def read(
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return get_tasks(user, db)
+
+
+@app.put("/tasks/{task_id}")
+def update(
+    task_id: int,
+    data: TaskUpdate,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return update_task(task_id, data, user, db)
+
+
+@app.delete("/tasks/{task_id}")
+def delete(
+    task_id: int,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return delete_task(task_id, user, db)
