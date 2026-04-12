@@ -1,14 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from app.db.database import Base, engine, get_db
-from app.db.models import User
 
-from app.schemas.user import UserCreate
 from app.schemas.task import TaskCreate, TaskUpdate
 
-from app.services.auth_service import admin_create_user
 from app.services.task_service import (
     create_task,
     get_tasks,
@@ -18,8 +15,9 @@ from app.services.task_service import (
 
 from app.core.dependencies import get_current_user
 
-# ✅ Import auth router
+# ✅ ROUTERS
 from app.routes import auth
+from app.routes import admin
 
 app = FastAPI()
 
@@ -37,54 +35,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create tables
+# ======================
+# DATABASE
+# ======================
 Base.metadata.create_all(bind=engine)
 
-# ✅ Include auth routes
+# ======================
+# ROUTERS
+# ======================
 app.include_router(auth.router)
-
-
-# ======================
-# ADMIN - CREATE USER
-# ======================
-@app.post("/admin/users")
-def create_user(
-    data: UserCreate,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    if not current_user or current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Only admin allowed")
-
-    user = admin_create_user(data, db)
-
-    return {
-        "message": "User created",
-        "user_id": user.id
-    }
-
-
-# ======================
-# ADMIN - GET ALL USERS
-# ======================
-@app.get("/admin/users")
-def get_all_users(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    if not current_user or current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Only admin allowed")
-
-    users = db.query(User).all()
-
-    return [
-        {
-            "id": user.id,
-            "email": user.email,
-            "role": user.role
-        }
-        for user in users
-    ]
+app.include_router(admin.router)
 
 
 # ======================
