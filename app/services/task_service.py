@@ -15,12 +15,13 @@ def create_task(data, user, db: Session):
     task = Task(
         title=data.title,
         description=data.description,
-        assigned_user_id=data.assigned_user_id
+        assigned_user_id=data.assigned_user_id,
+        status=data.status or "todo"   # ✅ NEW
     )
 
     db.add(task)
     db.commit()
-    db.refresh(task)   # 🔥 important
+    db.refresh(task)
 
     return task
 
@@ -55,7 +56,11 @@ def update_task(task_id, data, user, db: Session):
     if user.role != "admin" and task.assigned_user_id != user.id:
         raise HTTPException(status_code=403, detail="Not allowed")
 
-    update_data = data.dict(exclude_unset=True)
+    update_data = data.dict(exclude_unset=True, by_alias=False)
+
+    # 🔥 OPTIONAL: Restrict non-admin from reassigning tasks
+    if user.role != "admin" and "assigned_user_id" in update_data:
+        raise HTTPException(status_code=403, detail="Cannot reassign task")
 
     for key, value in update_data.items():
         setattr(task, key, value)

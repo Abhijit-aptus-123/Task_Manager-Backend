@@ -22,6 +22,8 @@ class TaskCreate(BaseModel):
 
     assigned_user_id: int = Field(alias="user_id")
 
+    status: Optional[str] = "todo"   # ✅ NEW
+
     class Config:
         populate_by_name = True
 
@@ -32,7 +34,10 @@ class TaskCreate(BaseModel):
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+
     assigned_user_id: Optional[int] = Field(default=None, alias="user_id")
+
+    status: Optional[str] = None   # ✅ NEW
 
     class Config:
         populate_by_name = True
@@ -47,7 +52,9 @@ class TaskResponse(BaseModel):
     description: Optional[str]
 
     assigned_user_id: Optional[int]
-    assigned_user: Optional[UserInfo]   # 🔥 includes email
+    assigned_user: Optional[UserInfo]
+
+    status: Optional[str]   # ✅ NEW
 
     class Config:
         from_attributes = True

@@ -36,8 +36,8 @@ def login(
         value=refresh_token,
         httponly=True,
         max_age=7 * 24 * 60 * 60,
-        samesite="lax", 
-        secure=False 
+        samesite="none", 
+        secure=True 
     )
 
     # ✅ Return access token
