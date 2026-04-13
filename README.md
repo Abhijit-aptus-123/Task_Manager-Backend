@@ -3,7 +3,7 @@
 A **Role-Based Task Management Backend** built using **FastAPI** and **PostgreSQL**, implementing **JWT Authentication** and **Role-Based Access Control (RBAC)**.
 
 
-<img width="1920" height="1080" alt="Screenshot (1342)" src="https://github.com/user-attachments/assets/73c9e726-cb9d-4771-8217-59f80c5cadd0" />
+<img width="1850" height="760" alt="Screenshot 2026-04-13 114723" src="https://github.com/user-attachments/assets/655f3506-811f-49c0-86f9-259d842a6511" />
 
 <img width="1920" height="1080" alt="Screenshot (1343)" src="https://github.com/user-attachments/assets/8dd910bb-8dbb-4e7f-ab9b-5951b2d917f8" />
 
@@ -42,14 +42,45 @@ http://127.0.0.1:8000
 
 ---
 
-## 🔌 API Endpoints
 
-### 🔐 Authentication
+---
 
-| Method | Endpoint       | Description   |
-| ------ | -------------- | ------------- |
-| POST   | /auth/register | Register user |
-| POST   | /auth/login    | Login user    |
+# 🔌 API Endpoints
+
+## 🔐 Authentication
+
+| Method | Endpoint        | Description |
+|--------|----------------|------------|
+| POST   | /auth/login    | Login user |
+| POST   | /auth/refresh  | Refresh access token |
+| GET    | /auth/me       | Get current user |
+
+---
+## 👥 Admin
+
+| Method | Endpoint                         | Description |
+|--------|----------------------------------|------------|
+| GET    | /admin/users                     | Get all users |
+| POST   | /admin/users                     | Create user/admin |
+| PUT    | /admin/users/{user_id}/role      | Update user role |
+
+---
+
+## 📋 Tasks
+
+| Method | Endpoint              | Description |
+|--------|----------------------|------------|
+| GET    | /tasks               | Get tasks |
+| POST   | /tasks               | Create task |
+| PUT    | /tasks/{task_id}     | Update task (including status) |
+| DELETE | /tasks/{task_id}     | Delete task |
+
+---
+
+## 🔑 Authorization
+
+All protected routes require:
+
 
 ---
 
@@ -74,13 +105,15 @@ Authorization: Bearer <access_token>
 
 ## 👥 Role-Based Access
 
-| Action          | Admin | User |
-| --------------- | ----- | ---- |
-| View all tasks  | ✅     | ❌    |
-| View own tasks  | ✅     | ✅    |
-| Create task     | ✅     | ✅    |
-| Update any task | ✅     | ❌    |
-| Delete task     | ✅     | ❌    |
+| Action              | Admin | User |
+|--------------------|------|------|
+| View all tasks     | ✅   | ❌   |
+| View own tasks     | ✅   | ✅   |
+| Create task        | ✅   | ✅   |
+| Update any task    | ✅   | ❌   |
+| Update status      | ✅   | ✅ (own only) |
+| Delete task        | ✅   | ❌   |
+| Manage users       | ✅   | ❌   |
 
 ---
 
@@ -88,12 +121,13 @@ Authorization: Bearer <access_token>
 
 Backend/
 │── app/
-│   ├── core/        # Security & dependencies
-│   ├── db/          # Database & models
-│   ├── routes/      # API routes
-│   ├── schemas/     # Pydantic schemas
-│   ├── services/    # Business logic
-│   └── main.py      # Entry point
+│ ├── core/ # Security & dependencies
+│ ├── db/ # Database & models
+│ ├── routes/ # API routes
+│ ├── schemas/ # Pydantic schemas
+│ ├── services/ # Business logic
+│ └── main.py # Entry point
+│── assets/ # Images (Swagger screenshot)
 │── .env
 │── requirements.txt
 │── .gitignore
