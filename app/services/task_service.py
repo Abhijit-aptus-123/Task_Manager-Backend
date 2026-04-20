@@ -1,22 +1,41 @@
 from sqlalchemy.orm import Session, joinedload
-from app.db.models import Task
 from fastapi import HTTPException
+
+from app.db.models import Task, User
+
+
+# ======================
+# HELPER
+# ======================
+def is_admin(user: User):
+    return user.role_obj and user.role_obj.name.lower() == "admin"
+
+
+# ======================
+# HELPER: CLEAN USER ID
+# ======================
+def get_valid_user_id(input_id, current_user_id):
+    if input_id in [None, "", 0]:
+        return current_user_id
+    return input_id
 
 
 # ======================
 # CREATE TASK
 # ======================
-def create_task(data, user, db: Session):
+def create_task(data, user: User, db: Session):
 
-    # 🔐 If not admin → assign task to self
-    if user.role != "admin":
-        data.assigned_user_id = user.id
+    assigned_user_id = get_valid_user_id(data.assigned_user_id, user.id)
+
+    assigned_user = db.query(User).filter(User.id == assigned_user_id).first()
+    if not assigned_user:
+        raise HTTPException(status_code=404, detail="Assigned user not found")
 
     task = Task(
         title=data.title,
         description=data.description,
-        assigned_user_id=data.assigned_user_id,
-        status=data.status or "todo"   # ✅ NEW
+        assigned_user_id=assigned_user_id,
+        status=data.status or "todo"
     )
 
     db.add(task)
@@ -29,38 +48,61 @@ def create_task(data, user, db: Session):
 # ======================
 # GET TASKS
 # ======================
-def get_tasks(user, db: Session):
+def get_tasks(user: User, db: Session):
 
-    if user.role == "admin":
-        return db.query(Task).options(joinedload(Task.assigned_user)).all()
+    query = db.query(Task).options(joinedload(Task.assigned_user))
 
-    return (
+    if is_admin(user):
+        return query.all()
+
+    return query.filter(Task.assigned_user_id == user.id).all()
+
+
+# ======================
+# GET SINGLE TASK
+# ======================
+def get_task_by_id(task_id: int, user: User, db: Session):
+
+    task = (
         db.query(Task)
         .options(joinedload(Task.assigned_user))
-        .filter(Task.assigned_user_id == user.id)
-        .all()
+        .filter(Task.id == task_id)
+        .first()
     )
+
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    if not is_admin(user) and task.assigned_user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    return task
 
 
 # ======================
 # UPDATE TASK
 # ======================
-def update_task(task_id, data, user, db: Session):
+def update_task(task_id: int, data, user: User, db: Session):
 
     task = db.query(Task).filter(Task.id == task_id).first()
 
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    # 🔐 RBAC check
-    if user.role != "admin" and task.assigned_user_id != user.id:
+    # Owner or admin
+    if not is_admin(user) and task.assigned_user_id != user.id:
         raise HTTPException(status_code=403, detail="Not allowed")
 
     update_data = data.dict(exclude_unset=True, by_alias=False)
 
-    # 🔥 OPTIONAL: Restrict non-admin from reassigning tasks
-    if user.role != "admin" and "assigned_user_id" in update_data:
-        raise HTTPException(status_code=403, detail="Cannot reassign task")
+    if "assigned_user_id" in update_data:
+        new_user_id = get_valid_user_id(update_data["assigned_user_id"], user.id)
+
+        assigned_user = db.query(User).filter(User.id == new_user_id).first()
+        if not assigned_user:
+            raise HTTPException(status_code=404, detail="Assigned user not found")
+
+        update_data["assigned_user_id"] = new_user_id
 
     for key, value in update_data.items():
         setattr(task, key, value)
@@ -72,19 +114,19 @@ def update_task(task_id, data, user, db: Session):
 
 
 # ======================
-# DELETE TASK
+# DELETE TASK ( FIXED)
 # ======================
-def delete_task(task_id, user, db: Session):
+def delete_task(task_id: int, user: User, db: Session):
 
     task = db.query(Task).filter(Task.id == task_id).first()
 
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Only admin allowed")
+    #  REMOVE ADMIN CHECK
+    # RBAC already handled in route using check_permission
 
     db.delete(task)
     db.commit()
 
-    return {"message": "Task deleted"}
+    return {"message": "Task deleted successfully"}

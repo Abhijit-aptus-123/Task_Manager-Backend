@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from datetime import timedelta
 
-from app.db.models import User
+from app.db.models import User, Role
 from app.schemas.user import UserCreate, UserLogin
 from app.core.security import (
     hash_password,
@@ -11,15 +11,14 @@ from app.core.security import (
     create_refresh_token
 )
 
-# =========================
-# TOKEN CONFIG
-# =========================
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-REFRESH_TOKEN_EXPIRE_DAYS = 7
+from app.core.config import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    REFRESH_TOKEN_EXPIRE_DAYS
+)
 
 
 # =========================
-# ADMIN CREATE USER
+# CREATE USER (MULTI-ROLE)
 # =========================
 def admin_create_user(data: UserCreate, db: Session):
 
@@ -27,10 +26,20 @@ def admin_create_user(data: UserCreate, db: Session):
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already exists")
 
+    #  First user = admin
+    user_count = db.query(User).count()
+    role_names = ["admin"] if user_count == 0 else data.roles
+
+    #  Fetch roles
+    role_objs = db.query(Role).filter(Role.name.in_(role_names)).all()
+
+    if len(role_objs) != len(role_names):
+        raise HTTPException(status_code=400, detail="Invalid role(s)")
+
     new_user = User(
         email=data.email,
         password=hash_password(data.password),
-        role=data.role  # admin decides role
+        roles=role_objs   # ✅ FIX
     )
 
     db.add(new_user)
@@ -50,7 +59,6 @@ def login_user(data: UserLogin, db: Session):
     if not user or not verify_password(data.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # ✅ FIXED: pass expiry
     access_token = create_access_token(
         {"sub": str(user.id)},
         timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)

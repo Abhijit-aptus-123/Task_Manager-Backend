@@ -1,16 +1,26 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
+from uuid import UUID
 
 
 # ======================
 # USER (for response)
 # ======================
 class UserInfo(BaseModel):
-    id: int
+    id: UUID   #  CHANGED
     email: str
 
     class Config:
         from_attributes = True
+
+
+# ======================
+# HELPER VALIDATOR
+# ======================
+def clean_user_id(value):
+    if value in ["", None]:
+        return None
+    return value
 
 
 # ======================
@@ -20,9 +30,14 @@ class TaskCreate(BaseModel):
     title: str
     description: Optional[str] = None
 
-    assigned_user_id: int = Field(alias="user_id")
+    assigned_user_id: Optional[UUID] = Field(default=None, alias="user_id")  #  CHANGED
 
-    status: Optional[str] = "todo"   # ✅ NEW
+    status: Optional[str] = "todo"
+
+    @field_validator("assigned_user_id", mode="before")
+    @classmethod
+    def validate_user_id(cls, v):
+        return clean_user_id(v)
 
     class Config:
         populate_by_name = True
@@ -35,26 +50,31 @@ class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
 
-    assigned_user_id: Optional[int] = Field(default=None, alias="user_id")
+    assigned_user_id: Optional[UUID] = Field(default=None, alias="user_id")  # CHANGED
 
-    status: Optional[str] = None   # ✅ NEW
+    status: Optional[str] = None
+
+    @field_validator("assigned_user_id", mode="before")
+    @classmethod
+    def validate_user_id(cls, v):
+        return clean_user_id(v)
 
     class Config:
         populate_by_name = True
 
 
 # ======================
-# RESPONSE SCHEMA
+# RESPONSE
 # ======================
 class TaskResponse(BaseModel):
     id: int
     title: str
     description: Optional[str]
 
-    assigned_user_id: Optional[int]
+    assigned_user_id: Optional[UUID]   # CHANGED
     assigned_user: Optional[UserInfo]
 
-    status: Optional[str]   # ✅ NEW
+    status: Optional[str]
 
     class Config:
         from_attributes = True

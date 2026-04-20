@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+from uuid import UUID
 
 from app.db.database import get_db
 from app.schemas.user import UserCreate, UserUpdate
@@ -10,20 +11,19 @@ from app.services.user_service import (
     delete_user
 )
 
-#  USE PERMISSION SYSTEM (NOT get_current_user)
 from app.core.permission import check_permission
 
-router = APIRouter()
+router = APIRouter(prefix="/users")
 
 
 # ======================
 # CREATE USER
 # ======================
-@router.post("/admin/users")
+@router.post("/")
 def create_user(
     data: UserCreate,
     db: Session = Depends(get_db),
-    user = Depends(check_permission("user", "create"))
+    user=Depends(check_permission("user", "create"))
 ):
     new_user = admin_create_user(data, db)
 
@@ -34,14 +34,14 @@ def create_user(
 
 
 # ======================
-# GET USERS (PAGINATION)
+# GET USERS
 # ======================
-@router.get("/admin/users")
+@router.get("/")
 def get_all_users(
     page: int = Query(1, ge=1),
     limit: int = Query(10, le=100),
     db: Session = Depends(get_db),
-    user = Depends(check_permission("user", "view"))
+    user=Depends(check_permission("user", "view"))
 ):
     return get_users_paginated(page, limit, db)
 
@@ -49,23 +49,23 @@ def get_all_users(
 # ======================
 # UPDATE USER
 # ======================
-@router.put("/admin/users/{user_id}")
+@router.put("/{user_id}")
 def update_user_api(
-    user_id: int,
+    user_id: UUID,
     data: UserUpdate,
     db: Session = Depends(get_db),
-    user = Depends(check_permission("user", "update"))
+    user=Depends(check_permission("user", "update"))
 ):
     return update_user(user_id, data, db)
 
 
 # ======================
-# DELETE USER
+# DELETE USER (FIXED)
 # ======================
-@router.delete("/admin/users/{user_id}")
+@router.delete("/{user_id}")
 def delete_user_api(
-    user_id: int,
+    user_id: UUID,
     db: Session = Depends(get_db),
-    user = Depends(check_permission("user", "delete"))
+    current_user=Depends(check_permission("user", "delete"))
 ):
-    return delete_user(user_id, db)
+    return delete_user(user_id, current_user, db)

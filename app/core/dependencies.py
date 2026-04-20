@@ -1,13 +1,13 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
-from jose import jwt
+from sqlalchemy.orm import Session, joinedload
+from jose import jwt, JWTError
+from uuid import UUID
 
 from app.db.database import get_db
 from app.db.models import User
 from app.core.config import SECRET_KEY, ALGORITHM
 
-# ✅ THIS ENABLES AUTHORIZE BUTTON
 security = HTTPBearer()
 
 
@@ -19,14 +19,35 @@ def get_current_user(
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = int(payload.get("sub"))
 
-        user = db.query(User).filter(User.id == user_id).first()
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        # 🔥 FIX: convert string → UUID
+        try:
+            user_uuid = UUID(user_id)
+        except ValueError:
+            raise HTTPException(status_code=401, detail="Invalid user ID format")
+
+        # 🔥 ensure latest DB state
+        db.expire_all()
+
+        user = (
+            db.query(User)
+            .options(joinedload(User.roles))
+            .filter(User.id == user_uuid)   # ✅ FIXED
+            .first()
+        )
 
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
 
         return user
 
-    except:
+    except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    except Exception as e:
+        print("AUTH ERROR:", e)
+        raise HTTPException(status_code=401, detail="Authentication failed")
