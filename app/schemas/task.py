@@ -7,7 +7,7 @@ from uuid import UUID
 # USER (for response)
 # ======================
 class UserInfo(BaseModel):
-    id: UUID   #  CHANGED
+    id: UUID
     email: str
 
     class Config:
@@ -15,7 +15,7 @@ class UserInfo(BaseModel):
 
 
 # ======================
-# HELPER VALIDATOR
+# HELPER
 # ======================
 def clean_user_id(value):
     if value in ["", None]:
@@ -30,7 +30,10 @@ class TaskCreate(BaseModel):
     title: str
     description: Optional[str] = None
 
-    assigned_user_id: Optional[UUID] = Field(default=None, alias="user_id")  #  CHANGED
+    assigned_user_id: Optional[UUID] = Field(
+        default=None,
+        alias="user_id"
+    )
 
     status: Optional[str] = "todo"
 
@@ -50,7 +53,10 @@ class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
 
-    assigned_user_id: Optional[UUID] = Field(default=None, alias="user_id")  # CHANGED
+    assigned_user_id: Optional[UUID] = Field(
+        default=None,
+        alias="user_id"
+    )
 
     status: Optional[str] = None
 
@@ -67,11 +73,11 @@ class TaskUpdate(BaseModel):
 # RESPONSE
 # ======================
 class TaskResponse(BaseModel):
-    id: int
+    id: UUID   # 🔥 FIXED (was int ❌)
     title: str
     description: Optional[str]
 
-    assigned_user_id: Optional[UUID]   # CHANGED
+    assigned_user_id: Optional[UUID]
     assigned_user: Optional[UserInfo]
 
     status: Optional[str]

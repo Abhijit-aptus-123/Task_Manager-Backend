@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from app.db.database import get_db
 from app.schemas.role import RoleCreate, RoleUpdate, RoleResponse, PaginatedRoles
@@ -22,22 +23,24 @@ router = APIRouter(prefix="/roles")
 def create(
     data: RoleCreate,
     db: Session = Depends(get_db),
-    user = Depends(check_permission("role", "create"))
+    user=Depends(check_permission("role", "create"))
 ):
     return create_role(data, db)
 
 
 # ======================
-# GET ROLES (PAGINATION FIX)
+# GET ROLES (FILTER + PAGINATION)
 # ======================
 @router.get("/", response_model=PaginatedRoles)
 def read(
     page: int = Query(1, ge=1),
     limit: int = Query(10, le=100),
+    name: Optional[str] = Query(None),
+    role_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    user = Depends(check_permission("role", "view"))
+    user=Depends(check_permission("role", "view"))
 ):
-    return get_roles(page, limit, db)
+    return get_roles(page, limit, db, name, role_id)
 
 
 # ======================
@@ -48,7 +51,7 @@ def update(
     role_id: int,
     data: RoleUpdate,
     db: Session = Depends(get_db),
-    user = Depends(check_permission("role", "update"))
+    user=Depends(check_permission("role", "update"))
 ):
     return update_role(role_id, data, db)
 
@@ -60,6 +63,6 @@ def update(
 def delete(
     role_id: int,
     db: Session = Depends(get_db),
-    user = Depends(check_permission("role", "delete"))
+    user=Depends(check_permission("role", "delete"))
 ):
     return delete_role(role_id, db)

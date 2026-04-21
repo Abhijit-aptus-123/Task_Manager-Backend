@@ -10,7 +10,6 @@ from app.core.security import (
     create_access_token,
     create_refresh_token
 )
-
 from app.core.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     REFRESH_TOKEN_EXPIRE_DAYS
@@ -18,28 +17,56 @@ from app.core.config import (
 
 
 # =========================
-# CREATE USER (MULTI-ROLE)
+# CREATE USER (FINAL VERSION ✅)
 # =========================
 def admin_create_user(data: UserCreate, db: Session):
 
+    # 🔒 Check duplicate email
     existing_user = db.query(User).filter(User.email == data.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already exists")
 
-    #  First user = admin
     user_count = db.query(User).count()
-    role_names = ["admin"] if user_count == 0 else data.roles
 
-    #  Fetch roles
-    role_objs = db.query(Role).filter(Role.name.in_(role_names)).all()
+    # ======================
+    # 🔥 FIRST USER → ADMIN
+    # ======================
+    if user_count == 0:
+        role_objs = db.query(Role).filter(Role.name == "admin").all()
 
-    if len(role_objs) != len(role_names):
-        raise HTTPException(status_code=400, detail="Invalid role(s)")
+        if not role_objs:
+            raise HTTPException(
+                status_code=500,
+                detail="Admin role not found"
+            )
 
+    # ======================
+    # 🔥 VALIDATE ROLE_IDS
+    # ======================
+    else:
+        # ❌ If missing or empty
+        if not data.role_ids or len(data.role_ids) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="At least one role must be assigned to user"
+            )
+
+        role_objs = db.query(Role).filter(Role.id.in_(data.role_ids)).all()
+
+        # ❌ Invalid IDs
+        if len(role_objs) != len(data.role_ids):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid role IDs"
+            )
+
+    # ======================
+    # CREATE USER
+    # ======================
     new_user = User(
         email=data.email,
         password=hash_password(data.password),
-        roles=role_objs   # ✅ FIX
+        roles=role_objs
     )
 
     db.add(new_user)

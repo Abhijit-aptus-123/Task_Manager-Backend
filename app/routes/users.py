@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from uuid import UUID
+from typing import Optional
 
 from app.db.database import get_db
-from app.schemas.user import UserCreate, UserUpdate
+from app.schemas.user import UserCreate, UserUpdate, PaginatedUsers
 from app.services.auth_service import admin_create_user
 from app.services.user_service import (
     get_users_paginated,
@@ -23,7 +24,7 @@ router = APIRouter(prefix="/users")
 def create_user(
     data: UserCreate,
     db: Session = Depends(get_db),
-    user=Depends(check_permission("user", "create"))
+    current_user=Depends(check_permission("user", "create"))
 ):
     new_user = admin_create_user(data, db)
 
@@ -34,16 +35,18 @@ def create_user(
 
 
 # ======================
-# GET USERS
+# GET USERS (MULTI-ROLE FILTER)
 # ======================
-@router.get("/")
+@router.get("/", response_model=PaginatedUsers)
 def get_all_users(
     page: int = Query(1, ge=1),
     limit: int = Query(10, le=100),
+    email: Optional[str] = Query(None),
+    roles: Optional[str] = Query(None),   # 🔥 CHANGED
     db: Session = Depends(get_db),
-    user=Depends(check_permission("user", "view"))
+    current_user=Depends(check_permission("user", "view"))
 ):
-    return get_users_paginated(page, limit, db)
+    return get_users_paginated(page, limit, db, email, roles)
 
 
 # ======================
@@ -54,13 +57,13 @@ def update_user_api(
     user_id: UUID,
     data: UserUpdate,
     db: Session = Depends(get_db),
-    user=Depends(check_permission("user", "update"))
+    current_user=Depends(check_permission("user", "update"))
 ):
     return update_user(user_id, data, db)
 
 
 # ======================
-# DELETE USER (FIXED)
+# DELETE USER
 # ======================
 @router.delete("/{user_id}")
 def delete_user_api(

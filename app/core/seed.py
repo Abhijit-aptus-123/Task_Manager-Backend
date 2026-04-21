@@ -6,26 +6,51 @@ from app.core.security import hash_password
 def seed_admin():
     db = SessionLocal()
 
-    # check if admin exists
-    existing = db.query(User).filter(User.email == "ab@gmail.com").first()
-    if existing:
-        return
+    try:
+        # ======================
+        # CHECK EXISTING ADMIN
+        # ======================
+        existing = db.query(User).filter(User.email == "ab@gmail.com").first()
+        if existing:
+            print("⚠️ Admin already exists")
+            return
 
-    # get admin role
-    admin_role = db.query(Role).filter(Role.name == "admin").first()
+        # ======================
+        # ENSURE ADMIN ROLE EXISTS
+        # ======================
+        admin_role = db.query(Role).filter(Role.name == "admin").first()
 
-    if not admin_role:
-        print("❌ Admin role not found")
-        return
+        if not admin_role:
+            print("⚠️ Admin role not found, creating...")
 
-    admin = User(
-        email="ab@gmail.com",
-        password=hash_password("123456"),
-        roles=[admin_role]   # ✅ CORRECT
-    )
+            admin_role = Role(
+                name="admin",
+                description="Super admin",
+                permissions={
+                    "dashboard": {"view": True, "create": True, "update": True, "delete": True},
+                    "user": {"view": True, "create": True, "update": True, "delete": True},
+                    "role": {"view": True, "create": True, "update": True, "delete": True},
+                    "task": {"view": True, "create": True, "update": True, "delete": True},
+                }
+            )
 
-    db.add(admin)
-    db.commit()
-    db.close()
+            db.add(admin_role)
+            db.commit()
+            db.refresh(admin_role)
 
-    print("✅ Admin seeded")
+        # ======================
+        # CREATE ADMIN USER
+        # ======================
+        admin = User(
+            email="ab@gmail.com",
+            password=hash_password("123456"),
+            roles=[admin_role]   # ✅ MULTI-ROLE
+        )
+
+        db.add(admin)
+        db.commit()
+
+        print("✅ Admin seeded successfully")
+
+    finally:
+        db.close()

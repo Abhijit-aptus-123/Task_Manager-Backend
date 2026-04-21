@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
-from typing import Dict, Optional
-from typing import List
+from typing import Dict, Optional, List
+from uuid import UUID
+
 
 # ======================
 # PERMISSION STRUCTURE
@@ -40,7 +41,7 @@ class RoleCreate(BaseModel):
                 "update": True,
                 "delete": True
             },
-            "task": {   # ✅ ADDED
+            "task": {
                 "view": True,
                 "create": True,
                 "update": True,
@@ -63,14 +64,15 @@ class RoleUpdate(BaseModel):
 # RESPONSE ROLE
 # ======================
 class RoleResponse(BaseModel):
-    id: int
+    id: UUID   # 🔥 FIXED (was int)
     name: str
     description: Optional[str]
     permissions: Dict[str, PermissionAction]
-    user_count: int = 0   # ✅ DEFAULT FIX
+    user_count: int = 0
 
     class Config:
         from_attributes = True
+
 
 # ======================
 # PAGINATED RESPONSE
@@ -79,5 +81,5 @@ class PaginatedRoles(BaseModel):
     total: int
     page: int
     limit: int
-    total_pages: int
+    offset: int
     data: List[RoleResponse]

@@ -24,19 +24,19 @@ def get_current_user(
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
 
-        # 🔥 FIX: convert string → UUID
+        # Convert string → UUID
         try:
             user_uuid = UUID(user_id)
         except ValueError:
             raise HTTPException(status_code=401, detail="Invalid user ID format")
 
-        # 🔥 ensure latest DB state
+        # Always fetch latest DB data
         db.expire_all()
 
         user = (
             db.query(User)
             .options(joinedload(User.roles))
-            .filter(User.id == user_uuid)   # ✅ FIXED
+            .filter(User.id == user_uuid)
             .first()
         )
 

@@ -110,41 +110,46 @@ def create_role(data, db: Session):
 
 
 # ======================
-# GET ROLES (PAGINATED)
+# GET ROLES (FILTER + PAGINATION)
 # ======================
-def get_roles(page: int, limit: int, db: Session):
+def get_roles(page: int, limit: int, db: Session, name=None, role_id=None):
 
     if page < 1 or limit < 1:
         raise HTTPException(status_code=400, detail="Invalid pagination values")
 
-    skip = (page - 1) * limit
-    total = db.query(Role).count()
+    query = db.query(Role)
 
-    roles = db.query(Role).offset(skip).limit(limit).all()
+    # 🔍 FILTER BY ID
+    if role_id:
+        query = query.filter(Role.id == role_id)
 
-    total_pages = (total + limit - 1) // limit
+    # 🔍 FILTER BY NAME (PARTIAL SEARCH)
+    if name:
+        query = query.filter(Role.name.ilike(f"%{name}%"))
+
+    total = query.count()
+
+    offset = (page - 1) * limit
+
+    roles = query.offset(offset).limit(limit).all()
 
     result = []
     for role in roles:
-        #  FIX: many-to-many → count users correctly
-        user_count = len(role.users)
-
         result.append({
             "id": role.id,
             "name": role.name,
             "description": role.description,
             "permissions": role.permissions,
-            "user_count": user_count
+            "user_count": len(role.users)
         })
 
     return {
         "total": total,
         "page": page,
         "limit": limit,
-        "total_pages": total_pages,
+        "offset": offset,
         "data": result
     }
-
 
 # ======================
 # UPDATE ROLE

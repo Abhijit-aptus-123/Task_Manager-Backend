@@ -4,34 +4,39 @@ from uuid import UUID
 
 
 # ======================
-# ROLE INFO
+# ROLE BASIC
 # ======================
-class RoleInfo(BaseModel):
-    id: int
+class RoleBasic(BaseModel):
+    id: UUID
     name: str
-    permissions: Dict[str, Any]
 
     class Config:
         from_attributes = True
 
 
 # ======================
-# CREATE
+# CREATE USER
 # ======================
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
-    roles: List[str]
+    role_ids: List[UUID]   # 🔥 CHANGED
 
 
+# ======================
+# LOGIN USER
+# ======================
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
 
+# ======================
+# UPDATE USER
+# ======================
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
-    roles: Optional[List[str]] = None
+    role_ids: Optional[List[UUID]] = None   # 🔥 CHANGED
 
 
 # ======================
@@ -40,8 +45,8 @@ class UserUpdate(BaseModel):
 class UserResponse(BaseModel):
     id: UUID
     email: str
-    roles: List[RoleInfo]
-    status: str
+    roles: List[RoleBasic]
+    status: str = "Active"
 
     class Config:
         from_attributes = True
@@ -54,16 +59,17 @@ class PaginatedUsers(BaseModel):
     total: int
     page: int
     limit: int
+    offset: int
     data: List[UserResponse]
 
 
 # ======================
-# /auth/me RESPONSE
+# /auth/me
 # ======================
 class UserMeResponse(BaseModel):
     id: UUID
     email: str
-    roles: List[RoleInfo]
+    roles: List[RoleBasic]
 
     class Config:
         from_attributes = True

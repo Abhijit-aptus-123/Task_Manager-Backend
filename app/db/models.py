@@ -1,19 +1,19 @@
-import uuid
-from sqlalchemy import Column, Integer, String, ForeignKey, JSON, Table
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, String, ForeignKey, JSON, Table
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+import uuid
 
 from .database import Base
 
 
 # ======================
-#  ASSOCIATION TABLE (UUID FIXED)
+# ASSOCIATION TABLE
 # ======================
 user_roles = Table(
     "user_roles",
     Base.metadata,
-    Column("user_id", UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
-    Column("role_id", Integer, ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True)
+    Column("user_id", UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")),
+    Column("role_id", UUID(as_uuid=True), ForeignKey("roles.id", ondelete="CASCADE")),
 )
 
 
@@ -23,7 +23,7 @@ user_roles = Table(
 class Role(Base):
     __tablename__ = "roles"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     name = Column(String, unique=True, nullable=False)
     description = Column(String, nullable=True)
     permissions = Column(JSON, default=dict)
@@ -36,25 +36,22 @@ class Role(Base):
 
 
 # ======================
-# USER MODEL (UUID)
+# USER MODEL
 # ======================
 class User(Base):
     __tablename__ = "users"
 
-    #  UUID PRIMARY KEY
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     email = Column(String, unique=True, nullable=False, index=True)
     password = Column(String, nullable=False)
 
-    #  MANY-TO-MANY ROLES
     roles = relationship(
         "Role",
         secondary=user_roles,
         back_populates="users"
     )
 
-    #  MERGED PERMISSIONS
+    # 🔥 MERGED PERMISSIONS
     @property
     def permissions(self):
         final_permissions = {}
@@ -81,18 +78,17 @@ class User(Base):
 
 
 # ======================
-# TASK MODEL (UUID FK)
+# TASK MODEL
 # ======================
 class Task(Base):
     __tablename__ = "tasks"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
 
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
     status = Column(String, default="todo", nullable=False)
 
-    #  UUID FOREIGN KEY
     assigned_user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
