@@ -149,22 +149,31 @@ Authorization: Bearer <access_token>
   }
 }
 ---
- 📋 Access Matrix
+
+## 📋 Access Matrix
+
 | Action          | Admin | User |
-| --------------- | ----- | ---- |
-| View all tasks  | ✅     | ❌    |
-| View own tasks  | ✅     | ✅    |
-| Create task     | ✅     | ✅    |
-| Update any task | ✅     | ❌    |
-| Delete task     | ✅     | ❌    |
-| Manage users    | ✅     | ❌    |
+|----------------|------|------|
+| View all tasks | ✅   | ❌   |
+| View own tasks | ✅   | ✅   |
+| Create task    | ✅   | ✅   |
+| Update any task| ✅   | ❌   |
+| Delete task    | ✅   | ❌   |
+| Manage users   | ✅   | ❌   |
+
 ---
 
-🆔 UUID System
-Users → UUID
-Roles → UUID
-APIs use UUID everywhere
+## 🆔 UUID System
+
+- Users → UUID  
+- Roles → UUID  
+- APIs use UUID everywhere  
+
 ---
+
+## 🗂️ Project Structure
+
+```bash
 Backend/
 │── app/
 │   ├── core/          # security, RBAC logic
@@ -178,46 +187,82 @@ Backend/
 │── .env
 │── requirements.txt
 │── .gitignore
+```
+
 ---
 
-⚙️ Setup Instructions
-1. Clone Repository
+## ⚙️ Setup Instructions
+
+### 1. Clone Repository
+
+```bash
 git clone <your-repo-url>
 cd Backend
+```
 
-2. Create Virtual Environment
+### 2. Create Virtual Environment
+
+```bash
 python -m venv env
+
 # Windows
 env\Scripts\activate
+
 # Linux / Mac
 source env/bin/activate
+```
 
-3. Install Dependencies
+### 3. Install Dependencies
+
+```bash
 pip install -r requirements.txt
+```
 
-4. Setup Environment Variables
-Create a .env file.
+### 4. Setup Environment Variables
 
-5. Run Server
-uvicorn app.main:app --reload
+Create a `.env` file.
 
-6. Open API Docs
-Swagger UI → http://127.0.0.1:8000/docs
-ReDoc → http://127.0.0.1:8000/redoc
 ---
-🧠 Architecture
+
+### 5. Run Server
+
+```bash
+uvicorn app.main:app --reload
+```
+
+---
+
+### 6. Open API Docs
+
+- Swagger UI → http://127.0.0.1:8000/docs  
+- ReDoc → http://127.0.0.1:8000/redoc  
+
+---
+
+## 🧠 Architecture
+
+```
 Routes → Services → Database Models
         ↓
      Schemas (Validation)
         ↓
      Core (Security & RBAC)
+```
+
 ---
-🔐 Security
--Passwords hashed using bcrypt
--JWT tokens with expiration
--Secure authentication & authorization
--Role-based permission enforcement
--Prevents critical misuse (e.g., self-deletion)
+
+## 🔐 Security
+
+- Passwords hashed using bcrypt  
+- JWT tokens with expiration  
+- Secure authentication & authorization  
+- Role-based permission enforcement  
+- Prevents critical misuse (e.g., self-deletion)  
+
 ---
-👨‍💻 Author
--Abhijit Maity
+
+## 👨‍💻 Author
+
+- Abhijit Maity
+
+---
