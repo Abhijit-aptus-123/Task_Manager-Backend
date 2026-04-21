@@ -8,9 +8,12 @@ A **Role-Based Task Management Backend API** built using **FastAPI** and **Postg
 
 <img width="1865" height="829" alt="Swagger UI" src="https://github.com/user-attachments/assets/066c68c3-60a3-4536-87de-4cb3dccc8a9b" />
 
+
 <img width="1855" height="589" alt="Users API" src="https://github.com/user-attachments/assets/7d9385ab-f089-46f7-bcd5-6d93da8f2b6d" />
 
+
 <img width="1858" height="842" alt="Tasks API" src="https://github.com/user-attachments/assets/2e72b233-59ee-48ec-b35f-ac2f1d4de573" />
+
 
 <img width="1851" height="784" alt="Database View" src="https://github.com/user-attachments/assets/eea28a4e-5c7b-4fe2-9b99-1144cef731d5" />
 
