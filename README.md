@@ -149,17 +149,16 @@ Authorization: Bearer <access_token>
   }
 }
 ---
-
 ## 📋 Access Matrix
 
-| Action          | Admin | User |
-|----------------|------|------|
-| View all tasks | ✅   | ❌   |
-| View own tasks | ✅   | ✅   |
-| Create task    | ✅   | ✅   |
-| Update any task| ✅   | ❌   |
-| Delete task    | ✅   | ❌   |
-| Manage users   | ✅   | ❌   |
+| Action           | Admin | User |
+|------------------|-------|------|
+| View all tasks   | ✅    | ❌   |
+| View own tasks   | ✅    | ✅   |
+| Create task      | ✅    | ✅   |
+| Update any task  | ✅    | ❌   |
+| Delete task      | ✅    | ❌   |
+| Manage users     | ✅    | ❌   |
 
 ---
 
