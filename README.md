@@ -148,7 +148,6 @@ Authorization: Bearer <access_token>
     "delete": false
   }
 }
----
 ## 📋 Access Matrix
 
 | Action           | Admin | User |
