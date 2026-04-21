@@ -42,7 +42,7 @@ def get_all_users(
     page: int = Query(1, ge=1),
     limit: int = Query(10, le=100),
     email: Optional[str] = Query(None),
-    roles: Optional[str] = Query(None),   # 🔥 CHANGED
+    roles: Optional[str] = Query(None),   #  CHANGED
     db: Session = Depends(get_db),
     current_user=Depends(check_permission("user", "view"))
 ):

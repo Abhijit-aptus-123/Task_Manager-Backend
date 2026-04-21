@@ -6,7 +6,7 @@ from app.routes import users
 from app.core.seed import seed_admin
 from app.db.database import Base, engine
 
-# ✅ ROUTERS
+# ROUTERS
 from app.routes import auth, admin, task
 
 app = FastAPI()
@@ -35,7 +35,7 @@ Base.metadata.create_all(bind=engine)
 # ======================
 app.include_router(auth.router)
 # app.include_router(admin.router)
-app.include_router(task.router)  # ✅ added task router
+app.include_router(task.router)  # added task router
 app.include_router(role.router)
 app.include_router(dashboard.router)
 app.include_router(users.router)

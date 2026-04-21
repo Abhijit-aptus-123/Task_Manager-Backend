@@ -21,7 +21,7 @@ from app.core.config import (
 # =========================
 def admin_create_user(data: UserCreate, db: Session):
 
-    # 🔒 Check duplicate email
+    #  Check duplicate email
     existing_user = db.query(User).filter(User.email == data.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already exists")
@@ -29,7 +29,7 @@ def admin_create_user(data: UserCreate, db: Session):
     user_count = db.query(User).count()
 
     # ======================
-    # 🔥 FIRST USER → ADMIN
+    #  FIRST USER → ADMIN
     # ======================
     if user_count == 0:
         role_objs = db.query(Role).filter(Role.name == "admin").all()
@@ -41,10 +41,10 @@ def admin_create_user(data: UserCreate, db: Session):
             )
 
     # ======================
-    # 🔥 VALIDATE ROLE_IDS
+    # VALIDATE ROLE_IDS
     # ======================
     else:
-        # ❌ If missing or empty
+        #  If missing or empty
         if not data.role_ids or len(data.role_ids) == 0:
             raise HTTPException(
                 status_code=400,
@@ -53,7 +53,7 @@ def admin_create_user(data: UserCreate, db: Session):
 
         role_objs = db.query(Role).filter(Role.id.in_(data.role_ids)).all()
 
-        # ❌ Invalid IDs
+        #  Invalid IDs
         if len(role_objs) != len(data.role_ids):
             raise HTTPException(
                 status_code=400,

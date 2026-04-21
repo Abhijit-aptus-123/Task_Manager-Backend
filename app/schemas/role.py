@@ -64,7 +64,7 @@ class RoleUpdate(BaseModel):
 # RESPONSE ROLE
 # ======================
 class RoleResponse(BaseModel):
-    id: UUID   # 🔥 FIXED (was int)
+    id: UUID   #  FIXED (was int)
     name: str
     description: Optional[str]
     permissions: Dict[str, PermissionAction]

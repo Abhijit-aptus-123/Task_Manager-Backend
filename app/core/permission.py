@@ -8,14 +8,14 @@ def check_permission(module: str, action: str):
 
         permissions = current_user.permissions or {}
 
-        # 🔥 MODULE CHECK
+        #  MODULE CHECK
         if module not in permissions:
             raise HTTPException(
                 status_code=403,
                 detail=f"No access to module: {module}"
             )
 
-        # 🔥 ACTION CHECK
+        # ACTION CHECK
         if not permissions[module].get(action, False):
             raise HTTPException(
                 status_code=403,

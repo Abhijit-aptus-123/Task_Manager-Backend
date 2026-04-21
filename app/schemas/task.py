@@ -73,7 +73,7 @@ class TaskUpdate(BaseModel):
 # RESPONSE
 # ======================
 class TaskResponse(BaseModel):
-    id: UUID   # 🔥 FIXED (was int ❌)
+    id: UUID   #  FIXED (was int )
     title: str
     description: Optional[str]
 

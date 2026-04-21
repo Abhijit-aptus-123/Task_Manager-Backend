@@ -20,7 +20,7 @@ class RoleBasic(BaseModel):
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
-    role_ids: List[UUID]   # 🔥 CHANGED
+    role_ids: List[UUID]   #  CHANGED
 
 
 # ======================
@@ -36,7 +36,7 @@ class UserLogin(BaseModel):
 # ======================
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
-    role_ids: Optional[List[UUID]] = None   # 🔥 CHANGED
+    role_ids: Optional[List[UUID]] = None   #  CHANGED
 
 
 # ======================

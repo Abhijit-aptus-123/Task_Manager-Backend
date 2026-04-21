@@ -51,7 +51,7 @@ class User(Base):
         back_populates="users"
     )
 
-    # 🔥 MERGED PERMISSIONS
+    #  MERGED PERMISSIONS
     @property
     def permissions(self):
         final_permissions = {}

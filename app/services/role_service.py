@@ -119,11 +119,11 @@ def get_roles(page: int, limit: int, db: Session, name=None, role_id=None):
 
     query = db.query(Role)
 
-    # 🔍 FILTER BY ID
+    #  FILTER BY ID
     if role_id:
         query = query.filter(Role.id == role_id)
 
-    # 🔍 FILTER BY NAME (PARTIAL SEARCH)
+    #  FILTER BY NAME (PARTIAL SEARCH)
     if name:
         query = query.filter(Role.name.ilike(f"%{name}%"))
 

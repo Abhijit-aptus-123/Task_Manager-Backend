@@ -12,7 +12,7 @@ def seed_admin():
         # ======================
         existing = db.query(User).filter(User.email == "ab@gmail.com").first()
         if existing:
-            print("⚠️ Admin already exists")
+            print(" Admin already exists")
             return
 
         # ======================
@@ -21,7 +21,7 @@ def seed_admin():
         admin_role = db.query(Role).filter(Role.name == "admin").first()
 
         if not admin_role:
-            print("⚠️ Admin role not found, creating...")
+            print("Admin role not found, creating...")
 
             admin_role = Role(
                 name="admin",

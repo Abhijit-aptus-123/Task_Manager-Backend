@@ -5,10 +5,13 @@ from app.db.models import Task, User
 
 
 # ======================
-# HELPER
+# HELPER: ADMIN CHECK 
 # ======================
 def is_admin(user: User):
-    return user.role_obj and user.role_obj.name.lower() == "admin"
+    # multi-role support
+    if not user.roles:
+        return False
+    return any(role.name.lower() == "admin" for role in user.roles)
 
 
 # ======================
@@ -52,9 +55,11 @@ def get_tasks(user: User, db: Session):
 
     query = db.query(Task).options(joinedload(Task.assigned_user))
 
+    #  Admin → all tasks
     if is_admin(user):
         return query.all()
 
+    # Normal user → only own tasks
     return query.filter(Task.assigned_user_id == user.id).all()
 
 
@@ -73,6 +78,7 @@ def get_task_by_id(task_id: int, user: User, db: Session):
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
+    # Access control
     if not is_admin(user) and task.assigned_user_id != user.id:
         raise HTTPException(status_code=403, detail="Not allowed")
 
@@ -89,12 +95,13 @@ def update_task(task_id: int, data, user: User, db: Session):
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    # Owner or admin
+    # Only owner or admin
     if not is_admin(user) and task.assigned_user_id != user.id:
         raise HTTPException(status_code=403, detail="Not allowed")
 
     update_data = data.dict(exclude_unset=True, by_alias=False)
 
+    # Handle reassignment
     if "assigned_user_id" in update_data:
         new_user_id = get_valid_user_id(update_data["assigned_user_id"], user.id)
 
@@ -104,6 +111,7 @@ def update_task(task_id: int, data, user: User, db: Session):
 
         update_data["assigned_user_id"] = new_user_id
 
+    # Apply updates
     for key, value in update_data.items():
         setattr(task, key, value)
 
@@ -114,7 +122,7 @@ def update_task(task_id: int, data, user: User, db: Session):
 
 
 # ======================
-# DELETE TASK ( FIXED)
+# DELETE TASK
 # ======================
 def delete_task(task_id: int, user: User, db: Session):
 
@@ -123,9 +131,7 @@ def delete_task(task_id: int, user: User, db: Session):
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    #  REMOVE ADMIN CHECK
-    # RBAC already handled in route using check_permission
-
+    # RBAC handled at route level (check_permission)
     db.delete(task)
     db.commit()
 

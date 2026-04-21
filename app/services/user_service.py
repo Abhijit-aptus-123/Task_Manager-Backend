@@ -21,11 +21,11 @@ def get_users_paginated(
 
     query = db.query(User)
 
-    # 🔍 FILTER BY EMAIL
+    #  FILTER BY EMAIL
     if email:
         query = query.filter(User.email.ilike(f"%{email}%"))
 
-    # 🔍 MULTI-ROLE FILTER (BY ROLE NAME)
+    #  MULTI-ROLE FILTER (BY ROLE NAME)
     if roles:
         role_list = [r.strip() for r in roles.split(",")]
 
@@ -68,7 +68,7 @@ def get_users_paginated(
 
 
 # ======================
-# UPDATE USER (ROLE_ID BASED ✅)
+# UPDATE USER (ROLE_ID BASED )
 # ======================
 def update_user(user_id: UUID, data, db: Session):
 
@@ -77,11 +77,11 @@ def update_user(user_id: UUID, data, db: Session):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # ✅ UPDATE EMAIL
+    #  UPDATE EMAIL
     if data.email:
         user.email = data.email
 
-    # ✅ UPDATE ROLES USING ROLE_IDS
+    #  UPDATE ROLES USING ROLE_IDS
     if data.role_ids is not None:
 
         # Allow clearing roles if empty list is passed
@@ -114,7 +114,7 @@ def delete_user(user_id: UUID, current_user: User, db: Session):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # ❌ Prevent self delete
+    #  Prevent self delete
     if current_user.id == user_id:
         raise HTTPException(
             status_code=400,
