@@ -149,7 +149,7 @@ Authorization: Bearer <access_token>
   }
 }
 ---
-** 📋 Access Matrix**
+ 📋 Access Matrix
 | Action          | Admin | User |
 | --------------- | ----- | ---- |
 | View all tasks  | ✅     | ❌    |
@@ -160,7 +160,7 @@ Authorization: Bearer <access_token>
 | Manage users    | ✅     | ❌    |
 ---
 
-**🆔 UUID System**
+🆔 UUID System
 Users → UUID
 Roles → UUID
 APIs use UUID everywhere
@@ -205,19 +205,19 @@ uvicorn app.main:app --reload
 Swagger UI → http://127.0.0.1:8000/docs
 ReDoc → http://127.0.0.1:8000/redoc
 ---
-**🧠 Architecture**
+🧠 Architecture
 Routes → Services → Database Models
         ↓
      Schemas (Validation)
         ↓
      Core (Security & RBAC)
 ---
-**🔐 Security**
+🔐 Security
 -Passwords hashed using bcrypt
 -JWT tokens with expiration
 -Secure authentication & authorization
 -Role-based permission enforcement
 -Prevents critical misuse (e.g., self-deletion)
 ---
-**👨‍💻 Author**
+👨‍💻 Author
 -Abhijit Maity
