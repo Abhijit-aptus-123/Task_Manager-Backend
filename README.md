@@ -148,6 +148,8 @@ Authorization: Bearer <access_token>
     "delete": false
   }
 }
+```
+
 ## 📋 Access Matrix
 
 | Action           | Admin | User |
@@ -170,6 +172,26 @@ Authorization: Bearer <access_token>
 ---
 
 ## 🗂️ Project Structure
+
+```bash
+Backend/
+│── app/
+│   ├── core/          # security, RBAC logic
+│   ├── db/            # models, database setup
+│   ├── routes/        # API endpoints
+│   ├── schemas/       # validation (Pydantic)
+│   ├── services/      # business logic
+│   └── main.py
+│
+│── alembic/           # migrations
+│── .env
+│── requirements.txt
+│── .gitignore
+```
+
+---
+
+## ⚙️ Setup Instructions
 
 ```bash
 Backend/
