@@ -42,11 +42,15 @@ A **Role-Based Task Management Backend API** built using **FastAPI** and **Postg
 - If `view = false` → all actions = false
 
 ### 📋 Tasks
-- Create, update, delete tasks
-- Assign tasks to users
-- Default assignment = self
-- Admin → full access
-- User → only own tasks
+
+- Create, update, and delete tasks based on permissions  
+- Assign tasks to other users (if permitted)  
+- Default assignment = self  
+- Access is controlled via **RBAC permissions**, not fixed roles  
+- Users can:
+  - View tasks (own or all based on permission)
+  - Update tasks (if `update` permission is granted)
+  - Delete tasks (if `delete` permission is granted)
 
 ### 🔍 Filtering & Pagination
 
@@ -57,6 +61,7 @@ A **Role-Based Task Management Backend API** built using **FastAPI** and **Postg
 
 **Roles**
 - Filter by name → `/roles?name=admin`
+- Filter by role_id
 - Pagination → `/roles?page=1&limit=10`
 
 ---
@@ -153,16 +158,14 @@ Authorization: Bearer <access_token>
 }
 ```
 
-## 📋 Access Matrix
+### 🔐 Permission Rules
 
-| Action           | Admin | User |
-|------------------|-------|------|
-| View all tasks   | ✅    | ❌   |
-| View own tasks   | ✅    | ✅   |
-| Create task      | ✅    | ✅   |
-| Update any task  | ✅    | ❌   |
-| Delete task      | ✅    | ❌   |
-| Manage users     | ✅    | ❌   |
+| Permission | Description |
+|------------|------------|
+| view       | View tasks (own or all based on role) |
+| create     | Create new tasks |
+| update     | Modify existing tasks |
+| delete     | Remove tasks |
 
 ---
 
