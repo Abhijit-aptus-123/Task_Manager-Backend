@@ -1,19 +1,22 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func   # ✅ FIXED
 from fastapi import HTTPException
 from uuid import UUID
+from typing import Optional
+from math import ceil
 
 from app.db.models import User, Role
 
 
 # ======================
-# GET USERS (MULTI-ROLE FILTER)
+# GET USERS (EMAIL + MULTI ROLE FILTER - AND LOGIC)
 # ======================
 def get_users_paginated(
     page: int,
     limit: int,
     db: Session,
-    email: str = None,
-    roles: str = None   # comma-separated role names (for filtering)
+    email: Optional[str] = None,
+    roles: Optional[str] = None
 ):
 
     if page < 1 or limit < 1:
@@ -21,26 +24,38 @@ def get_users_paginated(
 
     query = db.query(User)
 
-    #  FILTER BY EMAIL
+    # 🔍 FILTER BY EMAIL
     if email:
         query = query.filter(User.email.ilike(f"%{email}%"))
 
-    #  MULTI-ROLE FILTER (BY ROLE NAME)
+    #  MULTI-ROLE FILTER (AND LOGIC)
     if roles:
-        role_list = [r.strip() for r in roles.split(",")]
+        role_list = [r.strip() for r in roles.split(",") if r.strip()]
+
+        if not role_list:
+            raise HTTPException(status_code=400, detail="Invalid roles input")
 
         query = (
             query
             .join(User.roles)
             .filter(Role.name.in_(role_list))
-            .distinct()
+            .group_by(User.id)
+            .having(func.count(Role.id) == len(role_list))  # ✅ AND logic
         )
 
     total = query.count()
 
-    offset = (page - 1) * limit
+    total_pages = ceil(total / limit) if total > 0 else 1
 
-    users = query.offset(offset).limit(limit).all()
+    if page > total_pages:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Page exceeds total pages ({total_pages})"
+        )
+
+    skip = (page - 1) * limit
+
+    users = query.offset(skip).limit(limit).all()
 
     result = [
         {
@@ -62,13 +77,13 @@ def get_users_paginated(
         "total": total,
         "page": page,
         "limit": limit,
-        "offset": offset,
+        "offset": total_pages,   #custom naming
         "data": result
     }
 
 
 # ======================
-# UPDATE USER (ROLE_ID BASED )
+# UPDATE USER
 # ======================
 def update_user(user_id: UUID, data, db: Session):
 
@@ -77,23 +92,16 @@ def update_user(user_id: UUID, data, db: Session):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    #  UPDATE EMAIL
     if data.email:
         user.email = data.email
 
-    #  UPDATE ROLES USING ROLE_IDS
-    if data.role_ids is not None:
+    if data.role_ids:
+        role_objs = db.query(Role).filter(Role.id.in_(data.role_ids)).all()
 
-        # Allow clearing roles if empty list is passed
-        if len(data.role_ids) == 0:
-            user.roles = []
-        else:
-            role_objs = db.query(Role).filter(Role.id.in_(data.role_ids)).all()
+        if len(role_objs) != len(data.role_ids):
+            raise HTTPException(status_code=400, detail="Invalid role IDs")
 
-            if len(role_objs) != len(data.role_ids):
-                raise HTTPException(status_code=400, detail="Invalid role IDs")
-
-            user.roles = role_objs
+        user.roles = role_objs
 
     db.commit()
     db.refresh(user)
@@ -114,7 +122,6 @@ def delete_user(user_id: UUID, current_user: User, db: Session):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    #  Prevent self delete
     if current_user.id == user_id:
         raise HTTPException(
             status_code=400,

@@ -28,11 +28,7 @@ class Role(Base):
     description = Column(String, nullable=True)
     permissions = Column(JSON, default=dict)
 
-    users = relationship(
-        "User",
-        secondary=user_roles,
-        back_populates="roles"
-    )
+    users = relationship("User", secondary=user_roles, back_populates="roles")
 
 
 # ======================
@@ -45,13 +41,11 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     password = Column(String, nullable=False)
 
-    roles = relationship(
-        "Role",
-        secondary=user_roles,
-        back_populates="users"
-    )
+    roles = relationship("Role", secondary=user_roles, back_populates="users")
 
-    #  MERGED PERMISSIONS
+    # ======================
+    # MERGED PERMISSIONS (FINAL FIX ✅)
+    # ======================
     @property
     def permissions(self):
         final_permissions = {}
@@ -61,15 +55,15 @@ class User(Base):
                 continue
 
             for module, actions in role.permissions.items():
+
+                # ✅ Initialize dynamically (NO HARDCODING)
                 if module not in final_permissions:
-                    final_permissions[module] = {
-                        "view": False,
-                        "create": False,
-                        "update": False,
-                        "delete": False
-                    }
+                    final_permissions[module] = {}
 
                 for action, value in actions.items():
+                    if action not in final_permissions[module]:
+                        final_permissions[module][action] = False
+
                     final_permissions[module][action] = (
                         final_permissions[module][action] or value
                     )
@@ -78,7 +72,7 @@ class User(Base):
 
 
 # ======================
-# TASK MODEL
+# TASK MODEL (UUID)
 # ======================
 class Task(Base):
     __tablename__ = "tasks"

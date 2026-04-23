@@ -1,17 +1,15 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from uuid import UUID
 from typing import Optional
 
 from app.db.database import get_db
-from app.schemas.user import UserCreate, UserUpdate, PaginatedUsers
+from app.schemas.user import UserCreate, UserUpdate
 from app.services.auth_service import admin_create_user
 from app.services.user_service import (
     get_users_paginated,
     update_user,
     delete_user
 )
-
 from app.core.permission import check_permission
 
 router = APIRouter(prefix="/users")
@@ -24,7 +22,7 @@ router = APIRouter(prefix="/users")
 def create_user(
     data: UserCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(check_permission("user", "create"))
+    user=Depends(check_permission("user", "create"))
 ):
     new_user = admin_create_user(data, db)
 
@@ -35,16 +33,16 @@ def create_user(
 
 
 # ======================
-# GET USERS (MULTI-ROLE FILTER)
+# GET USERS (EMAIL + MULTI ROLE FILTER)
 # ======================
-@router.get("/", response_model=PaginatedUsers)
+@router.get("/")
 def get_all_users(
     page: int = Query(1, ge=1),
     limit: int = Query(10, le=100),
     email: Optional[str] = Query(None),
-    roles: Optional[str] = Query(None),   #  CHANGED
+    roles: Optional[str] = Query(None),   #  NEW FILTER
     db: Session = Depends(get_db),
-    current_user=Depends(check_permission("user", "view"))
+    user=Depends(check_permission("user", "view"))
 ):
     return get_users_paginated(page, limit, db, email, roles)
 
@@ -54,10 +52,10 @@ def get_all_users(
 # ======================
 @router.put("/{user_id}")
 def update_user_api(
-    user_id: UUID,
+    user_id,
     data: UserUpdate,
     db: Session = Depends(get_db),
-    current_user=Depends(check_permission("user", "update"))
+    user=Depends(check_permission("user", "update"))
 ):
     return update_user(user_id, data, db)
 
@@ -67,7 +65,7 @@ def update_user_api(
 # ======================
 @router.delete("/{user_id}")
 def delete_user_api(
-    user_id: UUID,
+    user_id,
     db: Session = Depends(get_db),
     current_user=Depends(check_permission("user", "delete"))
 ):

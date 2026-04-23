@@ -68,13 +68,13 @@ def refresh(
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid token payload")
 
-        #  UUID VALIDATION
+        # UUID VALIDATION
         try:
             user_uuid = UUID(user_id)
         except Exception:
             raise HTTPException(status_code=401, detail="Invalid user ID format")
 
-        #  ALWAYS LOAD FRESH DATA
+        # ALWAYS LOAD FRESH DATA
         db.expire_all()
 
         user = (
@@ -87,7 +87,7 @@ def refresh(
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
 
-        #  NEW ACCESS TOKEN
+        # NEW ACCESS TOKEN
         new_access_token = create_access_token(
             {"sub": str(user.id)},
             timedelta(minutes=30)
@@ -103,11 +103,11 @@ def refresh(
                 "roles": [
                     {
                         "id": role.id,
-                        "name": role.name,
-                        "permissions": role.permissions
+                        "name": role.name
                     }
                     for role in user.roles
-                ]
+                ],
+                "permissions": user.permissions   #  MERGED PERMISSIONS
             }
         }
 
@@ -120,7 +120,7 @@ def refresh(
 
 
 # ======================
-# CURRENT USER
+# CURRENT USER (/auth/me)
 # ======================
 @router.get("/auth/me", response_model=UserMeResponse)
 def get_me(current_user: User = Depends(get_current_user)):
@@ -131,9 +131,9 @@ def get_me(current_user: User = Depends(get_current_user)):
         "roles": [
             {
                 "id": role.id,
-                "name": role.name,
-                "permissions": role.permissions
+                "name": role.name
             }
             for role in current_user.roles
-        ]
+        ],
+        "permissions": current_user.permissions   
     }

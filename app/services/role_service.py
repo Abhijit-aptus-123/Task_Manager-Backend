@@ -1,83 +1,127 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from app.db.models import Role, User
+from app.db.models import Role
+from math import ceil
+from typing import Optional
+from uuid import UUID
 
 
 # ======================
-#  DEFAULT MODULES
+# DEFAULT PERMISSIONS
 # ======================
 DEFAULT_PERMISSIONS = {
-    "dashboard": {"view": False, "create": False, "update": False, "delete": False},
     "user": {"view": False, "create": False, "update": False, "delete": False},
     "role": {"view": False, "create": False, "update": False, "delete": False},
-    "task": {"view": False, "create": False, "update": False, "delete": False},
+    "task": {
+        "view": False,
+        "view_all": False,
+        "create": False,
+        "update": False,
+        "delete": False
+    },
 }
 
 
 # ======================
-#  NORMALIZE PERMISSIONS (MASTER LOGIC)
+#  STRICT CLEAN INPUT
+# ======================
+def clean_input_permissions(perms: dict):
+    cleaned = {}
+
+    for module, actions in perms.items():
+
+        # Remove view_all from non-task modules
+        if module != "task":
+            actions = {k: v for k, v in actions.items() if k != "view_all"}
+
+        cleaned[module] = actions
+
+    return cleaned
+
+
+# ======================
+# NORMALIZE
 # ======================
 def normalize_permissions(perms: dict):
-    """
-    Rules:
-    1. If view = False → everything False
-    2. If any action True → view = True
-    """
-
     normalized = {}
 
     for module, actions in perms.items():
 
         view = actions.get("view", False)
+        view_all = actions.get("view_all", False)
         create = actions.get("create", False)
         update = actions.get("update", False)
         delete = actions.get("delete", False)
 
-        #  RULE 1: view = False → everything False
+        # Only task can have view_all
+        if module != "task":
+            view_all = False
+
+        # view_all ⇒ view
+        if view_all:
+            view = True
+
+        # if view = False → everything False
         if not view:
-            normalized[module] = {
-                "view": False,
-                "create": False,
-                "update": False,
-                "delete": False
-            }
+            if module == "task":
+                normalized[module] = {
+                    "view": False,
+                    "view_all": False,
+                    "create": False,
+                    "update": False,
+                    "delete": False
+                }
+            else:
+                normalized[module] = {
+                    "view": False,
+                    "create": False,
+                    "update": False,
+                    "delete": False
+                }
             continue
 
-        # RULE 2: any action → view = True
+        # if any action True → view True
         if create or update or delete:
             view = True
 
-        normalized[module] = {
-            "view": view,
-            "create": create,
-            "update": update,
-            "delete": delete
-        }
+        if module == "task":
+            normalized[module] = {
+                "view": view,
+                "view_all": view_all,
+                "create": create,
+                "update": update,
+                "delete": delete
+            }
+        else:
+            normalized[module] = {
+                "view": view,
+                "create": create,
+                "update": update,
+                "delete": delete
+            }
 
     return normalized
 
 
 # ======================
-#  BUILD FINAL PERMISSIONS
+# BUILD ( FULL REBUILD)
 # ======================
 def build_permissions(input_permissions):
-    final_permissions = {}
 
-    # Convert Pydantic → dict
     input_dict = {
         module: action.dict()
         for module, action in input_permissions.items()
     }
 
-    # Apply normalization first
+    #  CLEAN FIRST
+    input_dict = clean_input_permissions(input_dict)
+
     normalized = normalize_permissions(input_dict)
 
-    # Merge with defaults
+    final_permissions = {}
+
     for module, defaults in DEFAULT_PERMISSIONS.items():
-        if module in normalized:
-            final_permissions[module] = normalized[module]
-        else:
-            final_permissions[module] = defaults
+        final_permissions[module] = normalized.get(module, defaults)
 
     return final_permissions
 
@@ -89,17 +133,12 @@ def create_role(data, db: Session):
 
     existing_role = db.query(Role).filter(Role.name.ilike(data.name)).first()
     if existing_role:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Role '{data.name}' already exists"
-        )
-
-    permissions_dict = build_permissions(data.permissions)
+        raise HTTPException(status_code=400, detail="Role already exists")
 
     role = Role(
         name=data.name,
         description=data.description,
-        permissions=permissions_dict
+        permissions=build_permissions(data.permissions)
     )
 
     db.add(role)
@@ -110,78 +149,63 @@ def create_role(data, db: Session):
 
 
 # ======================
-# GET ROLES (FILTER + PAGINATION)
+# GET ROLES
 # ======================
-def get_roles(page: int, limit: int, db: Session, name=None, role_id=None):
-
-    if page < 1 or limit < 1:
-        raise HTTPException(status_code=400, detail="Invalid pagination values")
+def get_roles(page, limit, db, role_id=None, name=None, description=None):
 
     query = db.query(Role)
 
-    #  FILTER BY ID
     if role_id:
         query = query.filter(Role.id == role_id)
 
-    #  FILTER BY NAME (PARTIAL SEARCH)
     if name:
         query = query.filter(Role.name.ilike(f"%{name}%"))
 
+    if description:
+        query = query.filter(Role.description.ilike(f"%{description}%"))
+
     total = query.count()
+    total_pages = ceil(total / limit) if total > 0 else 1
 
-    offset = (page - 1) * limit
-
-    roles = query.offset(offset).limit(limit).all()
-
-    result = []
-    for role in roles:
-        result.append({
-            "id": role.id,
-            "name": role.name,
-            "description": role.description,
-            "permissions": role.permissions,
-            "user_count": len(role.users)
-        })
+    skip = (page - 1) * limit
+    roles = query.offset(skip).limit(limit).all()
 
     return {
         "total": total,
         "page": page,
         "limit": limit,
-        "offset": offset,
-        "data": result
+        "offset": total_pages,
+        "data": [
+            {
+                "id": r.id,
+                "name": r.name,
+                "description": r.description,
+                "permissions": r.permissions,
+                "user_count": len(r.users)
+            }
+            for r in roles
+        ]
     }
 
+
 # ======================
-# UPDATE ROLE
+# UPDATE ROLE ( FIXED)
 # ======================
-def update_role(role_id, data, db: Session):
+def update_role(role_id: UUID, data, db: Session):
 
     role = db.query(Role).filter(Role.id == role_id).first()
 
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
 
-    #  Duplicate check
     if data.name:
-        existing_role = (
-            db.query(Role)
-            .filter(Role.name.ilike(data.name))
-            .filter(Role.id != role_id)
-            .first()
-        )
-
-        if existing_role:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Role '{data.name}' already exists"
-            )
-
         role.name = data.name
 
     if data.description is not None:
         role.description = data.description
 
     if data.permissions is not None:
+        #  FULL REBUILD (ignore old DB completely)
         role.permissions = build_permissions(data.permissions)
 
     db.commit()
@@ -193,21 +217,17 @@ def update_role(role_id, data, db: Session):
 # ======================
 # DELETE ROLE
 # ======================
-def delete_role(role_id, db: Session):
+def delete_role(role_id: UUID, db: Session):
 
     role = db.query(Role).filter(Role.id == role_id).first()
 
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
 
-    #  FIX: many-to-many check
     if role.users:
-        raise HTTPException(
-            status_code=400,
-            detail="Cannot delete role assigned to users"
-        )
+        raise HTTPException(status_code=400, detail="Role assigned to users")
 
     db.delete(role)
     db.commit()
 
-    return {"message": "Role deleted successfully"}
+    return {"message": "Role deleted"}

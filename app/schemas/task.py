@@ -4,7 +4,7 @@ from uuid import UUID
 
 
 # ======================
-# USER (for response)
+# USER (FOR RESPONSE)
 # ======================
 class UserInfo(BaseModel):
     id: UUID
@@ -18,8 +18,12 @@ class UserInfo(BaseModel):
 # HELPER
 # ======================
 def clean_user_id(value):
-    if value in ["", None]:
+    if value is None:
         return None
+
+    if isinstance(value, str) and value.strip() == "":
+        return None
+
     return value
 
 
@@ -30,6 +34,7 @@ class TaskCreate(BaseModel):
     title: str
     description: Optional[str] = None
 
+    #  Accept "user_id" from frontend
     assigned_user_id: Optional[UUID] = Field(
         default=None,
         alias="user_id"
@@ -73,14 +78,14 @@ class TaskUpdate(BaseModel):
 # RESPONSE
 # ======================
 class TaskResponse(BaseModel):
-    id: UUID   #  FIXED (was int )
+    id: UUID
     title: str
-    description: Optional[str]
+    description: Optional[str] = None
 
-    assigned_user_id: Optional[UUID]
-    assigned_user: Optional[UserInfo]
+    assigned_user_id: Optional[UUID] = None
+    assigned_user: Optional[UserInfo] = None
 
-    status: Optional[str]
+    status: Optional[str] = None
 
     class Config:
         from_attributes = True

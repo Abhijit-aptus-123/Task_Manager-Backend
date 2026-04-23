@@ -1,10 +1,10 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 
 
 # ======================
-# ROLE BASIC
+# ROLE BASIC (NO PERMISSIONS)
 # ======================
 class RoleBasic(BaseModel):
     id: UUID
@@ -15,12 +15,17 @@ class RoleBasic(BaseModel):
 
 
 # ======================
-# CREATE USER
+# CREATE USER (ROLE IDs)
 # ======================
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
-    role_ids: List[UUID]   #  CHANGED
+
+    # Optional → handled in service (first admin or validation)
+    role_ids: Optional[List[UUID]] = Field(
+        default=None,
+        description="List of role UUIDs"
+    )
 
 
 # ======================
@@ -36,11 +41,15 @@ class UserLogin(BaseModel):
 # ======================
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
-    role_ids: Optional[List[UUID]] = None   #  CHANGED
+
+    role_ids: Optional[List[UUID]] = Field(
+        default=None,
+        description="Update roles using role UUIDs"
+    )
 
 
 # ======================
-# RESPONSE USER
+# USER RESPONSE (LIST)
 # ======================
 class UserResponse(BaseModel):
     id: UUID
@@ -53,23 +62,26 @@ class UserResponse(BaseModel):
 
 
 # ======================
-# PAGINATION
+# PAGINATED USERS
 # ======================
 class PaginatedUsers(BaseModel):
     total: int
     page: int
     limit: int
-    offset: int
+    offset: int   # 🔥 represents total_pages (as per your requirement)
     data: List[UserResponse]
 
 
 # ======================
-# /auth/me
+# /auth/me RESPONSE
 # ======================
 class UserMeResponse(BaseModel):
     id: UUID
     email: str
     roles: List[RoleBasic]
+
+    # 🔥 merged permissions from all roles
+    permissions: Dict[str, Any]
 
     class Config:
         from_attributes = True

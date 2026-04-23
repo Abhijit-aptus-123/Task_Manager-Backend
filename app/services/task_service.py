@@ -1,17 +1,15 @@
 from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException
+from uuid import UUID
 
 from app.db.models import Task, User
 
 
 # ======================
-# HELPER: ADMIN CHECK 
+# HELPER: GET TASK PERMISSIONS
 # ======================
-def is_admin(user: User):
-    # multi-role support
-    if not user.roles:
-        return False
-    return any(role.name.lower() == "admin" for role in user.roles)
+def get_task_permissions(user: User):
+    return user.permissions.get("task", {})
 
 
 # ======================
@@ -49,24 +47,30 @@ def create_task(data, user: User, db: Session):
 
 
 # ======================
-# GET TASKS
+# GET TASKS (PERMISSION BASED)
 # ======================
 def get_tasks(user: User, db: Session):
 
+    perms = get_task_permissions(user)
+
     query = db.query(Task).options(joinedload(Task.assigned_user))
 
-    #  Admin → all tasks
-    if is_admin(user):
+    #  VIEW ALL TASKS
+    if perms.get("view_all"):
         return query.all()
 
-    # Normal user → only own tasks
-    return query.filter(Task.assigned_user_id == user.id).all()
+    #  VIEW OWN TASKS
+    if perms.get("view"):
+        return query.filter(Task.assigned_user_id == user.id).all()
+
+    #  NO ACCESS
+    raise HTTPException(status_code=403, detail="No permission to view tasks")
 
 
 # ======================
 # GET SINGLE TASK
 # ======================
-def get_task_by_id(task_id: int, user: User, db: Session):
+def get_task_by_id(task_id: UUID, user: User, db: Session):
 
     task = (
         db.query(Task)
@@ -78,30 +82,42 @@ def get_task_by_id(task_id: int, user: User, db: Session):
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    # Access control
-    if not is_admin(user) and task.assigned_user_id != user.id:
-        raise HTTPException(status_code=403, detail="Not allowed")
+    perms = get_task_permissions(user)
 
-    return task
+    #  FULL ACCESS
+    if perms.get("view_all"):
+        return task
+
+    # OWN TASK ACCESS
+    if perms.get("view") and task.assigned_user_id == user.id:
+        return task
+
+    raise HTTPException(status_code=403, detail="Not allowed")
 
 
 # ======================
 # UPDATE TASK
 # ======================
-def update_task(task_id: int, data, user: User, db: Session):
+def update_task(task_id: UUID, data, user: User, db: Session):
 
     task = db.query(Task).filter(Task.id == task_id).first()
 
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    # Only owner or admin
-    if not is_admin(user) and task.assigned_user_id != user.id:
+    perms = get_task_permissions(user)
+
+    #  NO UPDATE PERMISSION
+    if not perms.get("update"):
+        raise HTTPException(status_code=403, detail="No update permission")
+
+    #  NOT OWNER (if not view_all)
+    if not perms.get("view_all") and task.assigned_user_id != user.id:
         raise HTTPException(status_code=403, detail="Not allowed")
 
     update_data = data.dict(exclude_unset=True, by_alias=False)
 
-    # Handle reassignment
+    #  HANDLE REASSIGNMENT
     if "assigned_user_id" in update_data:
         new_user_id = get_valid_user_id(update_data["assigned_user_id"], user.id)
 
@@ -111,7 +127,6 @@ def update_task(task_id: int, data, user: User, db: Session):
 
         update_data["assigned_user_id"] = new_user_id
 
-    # Apply updates
     for key, value in update_data.items():
         setattr(task, key, value)
 
@@ -124,14 +139,23 @@ def update_task(task_id: int, data, user: User, db: Session):
 # ======================
 # DELETE TASK
 # ======================
-def delete_task(task_id: int, user: User, db: Session):
+def delete_task(task_id: UUID, user: User, db: Session):
 
     task = db.query(Task).filter(Task.id == task_id).first()
 
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    # RBAC handled at route level (check_permission)
+    perms = get_task_permissions(user)
+
+    # NO DELETE PERMISSION
+    if not perms.get("delete"):
+        raise HTTPException(status_code=403, detail="No delete permission")
+
+    #  NOT OWNER (if not view_all)
+    if not perms.get("view_all") and task.assigned_user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not allowed")
+
     db.delete(task)
     db.commit()
 

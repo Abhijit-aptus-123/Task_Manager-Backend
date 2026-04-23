@@ -17,11 +17,11 @@ from app.core.config import (
 
 
 # =========================
-# CREATE USER (FINAL VERSION ✅)
+# CREATE USER (STRICT ROLE VALIDATION)
 # =========================
 def admin_create_user(data: UserCreate, db: Session):
 
-    #  Check duplicate email
+    # 🔍 Check duplicate email
     existing_user = db.query(User).filter(User.email == data.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already exists")
@@ -41,19 +41,20 @@ def admin_create_user(data: UserCreate, db: Session):
             )
 
     # ======================
-    # VALIDATE ROLE_IDS
+    #  ALL OTHER USERS
     # ======================
     else:
-        #  If missing or empty
-        if not data.role_ids or len(data.role_ids) == 0:
+        #  No roles provided
+        if data.role_ids is None or len(data.role_ids) == 0:
             raise HTTPException(
                 status_code=400,
-                detail="At least one role must be assigned to user"
+                detail="At least one role must be assigned"
             )
 
+        # 🔍 Fetch roles
         role_objs = db.query(Role).filter(Role.id.in_(data.role_ids)).all()
 
-        #  Invalid IDs
+        #  Invalid role IDs
         if len(role_objs) != len(data.role_ids):
             raise HTTPException(
                 status_code=400,

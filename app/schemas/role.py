@@ -1,16 +1,23 @@
 from pydantic import BaseModel, Field
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Union
 from uuid import UUID
 
 
 # ======================
-# PERMISSION STRUCTURE
+# BASE PERMISSION (NO view_all)
 # ======================
-class PermissionAction(BaseModel):
+class BasePermission(BaseModel):
     view: bool = False
     create: bool = False
     update: bool = False
     delete: bool = False
+
+
+# ======================
+# TASK PERMISSION (WITH view_all)
+# ======================
+class TaskPermission(BasePermission):
+    view_all: bool = False   # ✅ ONLY HERE
 
 
 # ======================
@@ -20,15 +27,9 @@ class RoleCreate(BaseModel):
     name: str
     description: Optional[str] = None
 
-    permissions: Dict[str, PermissionAction] = Field(
+    permissions: Dict[str, Union[BasePermission, TaskPermission]] = Field(
         ...,
         example={
-            "dashboard": {
-                "view": True,
-                "create": False,
-                "update": False,
-                "delete": False
-            },
             "user": {
                 "view": True,
                 "create": True,
@@ -43,9 +44,10 @@ class RoleCreate(BaseModel):
             },
             "task": {
                 "view": True,
+                "view_all": False,
                 "create": True,
                 "update": True,
-                "delete": True
+                "delete": False
             }
         }
     )
@@ -57,17 +59,17 @@ class RoleCreate(BaseModel):
 class RoleUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    permissions: Optional[Dict[str, PermissionAction]] = None
+    permissions: Optional[Dict[str, Union[BasePermission, TaskPermission]]] = None
 
 
 # ======================
 # RESPONSE ROLE
 # ======================
 class RoleResponse(BaseModel):
-    id: UUID   #  FIXED (was int)
+    id: UUID
     name: str
     description: Optional[str]
-    permissions: Dict[str, PermissionAction]
+    permissions: Dict[str, dict]   # ✅ flexible output
     user_count: int = 0
 
     class Config:
@@ -81,5 +83,5 @@ class PaginatedRoles(BaseModel):
     total: int
     page: int
     limit: int
-    offset: int
+    offset: int   # (your total_pages logic)
     data: List[RoleResponse]
