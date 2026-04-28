@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse
@@ -31,32 +31,36 @@ def create_task_api(
 
 
 # ======================
-# GET ALL TASKS
+# GET ALL TASKS (WITH FILTERS)
 # ======================
 @router.get("/", response_model=List[TaskResponse])
 def get_tasks_api(
+    title: Optional[str] = Query(None),
+    description: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(check_permission("task", "view"))
 ):
-    return get_tasks(current_user, db)
+    return get_tasks(current_user, db, title, description)
 
 
 # ======================
-# GET SINGLE TASK
+# GET SINGLE TASK (WITH FILTER CHECK)
 # ======================
 @router.get("/{task_id}", response_model=TaskResponse)
 def get_task_api(
     task_id: UUID,
+    title: Optional[str] = Query(None),
+    description: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(check_permission("task", "view"))
 ):
-    return get_task_by_id(task_id, current_user, db)
+    return get_task_by_id(task_id, current_user, db, title, description)
 
 
 # ======================
 # UPDATE TASK
 # ======================
-@router.put("/{task_id}", response_model=TaskResponse)
+@router.patch("/{task_id}", response_model=TaskResponse)
 def update_task_api(
     task_id: UUID,
     data: TaskUpdate,

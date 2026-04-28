@@ -15,11 +15,14 @@ from app.core.config import (
     REFRESH_TOKEN_EXPIRE_DAYS
 )
 
+# 🔥 NEW
+from app.services.audit_service import log_action
+
 
 # =========================
 # CREATE USER (STRICT ROLE VALIDATION)
 # =========================
-def admin_create_user(data: UserCreate, db: Session):
+def admin_create_user(data: UserCreate, db: Session, current_user):
 
     # 🔍 Check duplicate email
     existing_user = db.query(User).filter(User.email == data.email).first()
@@ -44,17 +47,14 @@ def admin_create_user(data: UserCreate, db: Session):
     #  ALL OTHER USERS
     # ======================
     else:
-        #  No roles provided
         if data.role_ids is None or len(data.role_ids) == 0:
             raise HTTPException(
                 status_code=400,
                 detail="At least one role must be assigned"
             )
 
-        # 🔍 Fetch roles
         role_objs = db.query(Role).filter(Role.id.in_(data.role_ids)).all()
 
-        #  Invalid role IDs
         if len(role_objs) != len(data.role_ids):
             raise HTTPException(
                 status_code=400,
@@ -73,6 +73,10 @@ def admin_create_user(data: UserCreate, db: Session):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    #  AUDIT LOG (creator = current_user; first user fallback)
+    actor_id = current_user.id if current_user else new_user.id
+    log_action(db, actor_id, "create", "user", new_user.id)
 
     return new_user
 

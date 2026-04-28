@@ -27,7 +27,6 @@ def seed_admin():
                 name="admin",
                 description="Super admin",
                 permissions={
-                    "dashboard": {"view": True, "create": True, "update": True, "delete": True},
                     "user": {"view": True, "create": True, "update": True, "delete": True},
                     "role": {"view": True, "create": True, "update": True, "delete": True},
                     "task": {"view": True, "create": True, "update": True, "delete": True},

@@ -4,7 +4,7 @@ from uuid import UUID
 
 
 # ======================
-# BASE PERMISSION (NO view_all)
+# BASE PERMISSION
 # ======================
 class BasePermission(BaseModel):
     view: bool = False
@@ -14,10 +14,28 @@ class BasePermission(BaseModel):
 
 
 # ======================
-# TASK PERMISSION (WITH view_all)
+# TASK PERMISSION
 # ======================
 class TaskPermission(BasePermission):
-    view_all: bool = False   # ✅ ONLY HERE
+    pass
+
+
+# ======================
+# TASK SCOPE
+# ======================
+class TaskScope(BaseModel):
+    view_all: bool = False
+    create_all: bool = False
+    update_all: bool = False
+    delete_all: bool = False
+
+
+# ======================
+# ANALYTICS PERMISSION  NEW
+# ======================
+class AnalyticsPermission(BaseModel):
+    view: bool = False
+    view_all: bool = False
 
 
 # ======================
@@ -27,7 +45,10 @@ class RoleCreate(BaseModel):
     name: str
     description: Optional[str] = None
 
-    permissions: Dict[str, Union[BasePermission, TaskPermission]] = Field(
+    permissions: Dict[
+        str,
+        Union[BasePermission, TaskPermission, TaskScope, AnalyticsPermission]
+    ] = Field(
         ...,
         example={
             "user": {
@@ -44,10 +65,22 @@ class RoleCreate(BaseModel):
             },
             "task": {
                 "view": True,
-                "view_all": False,
                 "create": True,
                 "update": True,
                 "delete": False
+            },
+            "audit": {
+                "view": True
+            },
+            "analytics": {
+                "view": True,
+                "view_all": True   # NEW
+            },
+            "task_scope": {
+                "view_all": True,
+                "create_all": False,
+                "update_all": True,
+                "delete_all": False
             }
         }
     )
@@ -59,7 +92,9 @@ class RoleCreate(BaseModel):
 class RoleUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    permissions: Optional[Dict[str, Union[BasePermission, TaskPermission]]] = None
+    permissions: Optional[
+        Dict[str, Union[BasePermission, TaskPermission, TaskScope, AnalyticsPermission]]
+    ] = None
 
 
 # ======================
@@ -69,7 +104,7 @@ class RoleResponse(BaseModel):
     id: UUID
     name: str
     description: Optional[str]
-    permissions: Dict[str, dict]   # ✅ flexible output
+    permissions: Dict[str, dict]
     user_count: int = 0
 
     class Config:
@@ -83,5 +118,5 @@ class PaginatedRoles(BaseModel):
     total: int
     page: int
     limit: int
-    offset: int   # (your total_pages logic)
+    offset: int
     data: List[RoleResponse]

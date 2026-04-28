@@ -16,6 +16,62 @@ router = APIRouter()
 
 
 # ======================
+# FORMAT PERMISSIONS (FINAL FIX)
+# ======================
+def format_permissions_for_response(perms: dict):
+    formatted = {}
+
+    for module, actions in perms.items():
+
+        # ======================
+        # TASK → REMOVE INTERNAL view_all
+        # ======================
+        if module == "task":
+            cleaned = actions.copy()
+            cleaned.pop("view_all", None)  # safety
+            formatted[module] = cleaned
+            continue
+
+        # ======================
+        # AUDIT → ONLY VIEW
+        # ======================
+        if module == "audit":
+            formatted[module] = {
+                "view": actions.get("view", False)
+            }
+            continue
+
+        # ======================
+        # ANALYTICS → VIEW + VIEW_ALL ✅ FIX
+        # ======================
+        if module == "analytics":
+            formatted[module] = {
+                "view": actions.get("view", False),
+                "view_all": actions.get("view_all", False)
+            }
+            continue
+
+        # ======================
+        # TASK_SCOPE → KEEP FULL
+        # ======================
+        if module == "task_scope":
+            formatted[module] = {
+                "view_all": actions.get("view_all", False),
+                "create_all": actions.get("create_all", False),
+                "update_all": actions.get("update_all", False),
+                "delete_all": actions.get("delete_all", False),
+            }
+            continue
+
+        # ======================
+        # DEFAULT MODULES
+        # ======================
+        formatted[module] = actions
+
+    return formatted
+
+
+# ======================
 # LOGIN
 # ======================
 @router.post("/auth/login")
@@ -68,13 +124,11 @@ def refresh(
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid token payload")
 
-        # UUID VALIDATION
         try:
             user_uuid = UUID(user_id)
         except Exception:
             raise HTTPException(status_code=401, detail="Invalid user ID format")
 
-        # ALWAYS LOAD FRESH DATA
         db.expire_all()
 
         user = (
@@ -87,7 +141,6 @@ def refresh(
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
 
-        # NEW ACCESS TOKEN
         new_access_token = create_access_token(
             {"sub": str(user.id)},
             timedelta(minutes=30)
@@ -107,7 +160,7 @@ def refresh(
                     }
                     for role in user.roles
                 ],
-                "permissions": user.permissions   #  MERGED PERMISSIONS
+                "permissions": format_permissions_for_response(user.permissions)
             }
         }
 
@@ -135,5 +188,5 @@ def get_me(current_user: User = Depends(get_current_user)):
             }
             for role in current_user.roles
         ],
-        "permissions": current_user.permissions   
+        "permissions": format_permissions_for_response(current_user.permissions)
     }

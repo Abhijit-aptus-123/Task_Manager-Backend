@@ -4,6 +4,7 @@ from typing import Optional
 from uuid import UUID
 
 from app.db.database import get_db
+from app.db.models import Role
 from app.schemas.role import RoleCreate, RoleUpdate, RoleResponse, PaginatedRoles
 from app.services.role_service import (
     create_role,
@@ -26,22 +27,22 @@ def create(
     db: Session = Depends(get_db),
     user=Depends(check_permission("role", "create"))
 ):
-    return create_role(data, db)
+    return create_role(data, db, user)
 
 
 # ======================
-# GET ROLES (FILTER BY ID + NAME)
+# GET ROLES
 # ======================
 @router.get("/", response_model=PaginatedRoles)
 def read(
     page: int = Query(1, ge=1),
     limit: int = Query(10, le=100),
-    role_id: Optional[UUID] = Query(None),
     name: Optional[str] = Query(None),
+    description: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     user=Depends(check_permission("role", "view"))
 ):
-    return get_roles(page, limit, db, role_id, name)
+    return get_roles(page, limit, db, name, description)
 
 
 # ======================
@@ -54,7 +55,8 @@ def update(
     db: Session = Depends(get_db),
     user=Depends(check_permission("role", "update"))
 ):
-    return update_role(role_id, data, db)
+    # FIX: pass user
+    return update_role(role_id, data, db, user)
 
 
 # ======================
@@ -66,4 +68,26 @@ def delete(
     db: Session = Depends(get_db),
     user=Depends(check_permission("role", "delete"))
 ):
-    return delete_role(role_id, db)
+    # FIX: pass user
+    return delete_role(role_id, db, user)
+
+
+# ======================
+# GET ALL ROLES (NO PERMISSION CHECK)
+# ======================
+@router.get("/all")
+def get_all_roles_unrestricted(
+    db: Session = Depends(get_db)
+):
+    roles = db.query(Role).all()
+
+    return [
+        {
+            "id": role.id,
+            "name": role.name,
+            "description": role.description,
+            "permissions": role.permissions,
+            "user_count": len(role.users)
+        }
+        for role in roles
+    ]

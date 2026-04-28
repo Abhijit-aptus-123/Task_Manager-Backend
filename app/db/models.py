@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 import uuid
 
 from .database import Base
+from datetime import datetime
 
 
 # ======================
@@ -44,7 +45,7 @@ class User(Base):
     roles = relationship("Role", secondary=user_roles, back_populates="users")
 
     # ======================
-    # MERGED PERMISSIONS (FINAL FIX ✅)
+    # MERGED PERMISSIONS
     # ======================
     @property
     def permissions(self):
@@ -56,7 +57,6 @@ class User(Base):
 
             for module, actions in role.permissions.items():
 
-                # ✅ Initialize dynamically (NO HARDCODING)
                 if module not in final_permissions:
                     final_permissions[module] = {}
 
@@ -72,7 +72,7 @@ class User(Base):
 
 
 # ======================
-# TASK MODEL (UUID)
+# TASK MODEL (UPDATED )
 # ======================
 class Task(Base):
     __tablename__ = "tasks"
@@ -83,10 +83,58 @@ class Task(Base):
     description = Column(String, nullable=True)
     status = Column(String, default="todo", nullable=False)
 
+    #  ASSIGNEE
     assigned_user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=True
     )
 
-    assigned_user = relationship("User")
+    assigned_user = relationship("User", foreign_keys=[assigned_user_id])
+
+    # NEW → ASSIGNER / CREATOR
+    created_by = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    created_user = relationship("User", foreign_keys=[created_by])
+
+
+# ======================
+# AUDIT LOG
+# ======================
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    action = Column(String, nullable=False)
+    resource = Column(String, nullable=False)
+    resource_id = Column(String, nullable=True)
+
+    timestamp = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+    user = relationship("User")
+
+
+# ======================
+# NOTIFICATION MODEL (UPDATED)
+# ======================
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+
+    message = Column(String, nullable=False)
+
+    # FIX: Boolean instead of string
+    is_read = Column(String, default="false")
+
+    timestamp = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+    user = relationship("User")

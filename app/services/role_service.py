@@ -5,6 +5,8 @@ from math import ceil
 from typing import Optional
 from uuid import UUID
 
+from app.services.audit_service import log_action
+
 
 # ======================
 # DEFAULT PERMISSIONS
@@ -12,27 +14,56 @@ from uuid import UUID
 DEFAULT_PERMISSIONS = {
     "user": {"view": False, "create": False, "update": False, "delete": False},
     "role": {"view": False, "create": False, "update": False, "delete": False},
-    "task": {
+    "task": {"view": False, "create": False, "update": False, "delete": False},
+
+    # UPDATED
+    "audit": {"view": False},
+    "analytics": {
         "view": False,
-        "view_all": False,
-        "create": False,
-        "update": False,
-        "delete": False
+        "view_all": False   # NEW
     },
+
+    "task_scope": {
+        "view_all": False,
+        "create_all": False,
+        "update_all": False,
+        "delete_all": False
+    }
 }
 
 
 # ======================
-#  STRICT CLEAN INPUT
+# CLEAN INPUT
 # ======================
 def clean_input_permissions(perms: dict):
     cleaned = {}
 
     for module, actions in perms.items():
 
-        # Remove view_all from non-task modules
-        if module != "task":
-            actions = {k: v for k, v in actions.items() if k != "view_all"}
+        # AUDIT → ONLY VIEW
+        if module == "audit":
+            cleaned[module] = {
+                "view": actions.get("view", False)
+            }
+            continue
+
+        # ANALYTICS → VIEW + VIEW_ALL
+        if module == "analytics":
+            cleaned[module] = {
+                "view": actions.get("view", False),
+                "view_all": actions.get("view_all", False)
+            }
+            continue
+
+        # TASK_SCOPE
+        if module == "task_scope":
+            cleaned[module] = {
+                "view_all": actions.get("view_all", False),
+                "create_all": actions.get("create_all", False),
+                "update_all": actions.get("update_all", False),
+                "delete_all": actions.get("delete_all", False),
+            }
+            continue
 
         cleaned[module] = actions
 
@@ -40,71 +71,65 @@ def clean_input_permissions(perms: dict):
 
 
 # ======================
-# NORMALIZE
+# NORMALIZE PERMISSIONS
 # ======================
 def normalize_permissions(perms: dict):
     normalized = {}
 
     for module, actions in perms.items():
 
+        # AUDIT
+        if module == "audit":
+            normalized[module] = {
+                "view": actions.get("view", False)
+            }
+            continue
+
+        # ANALYTICS
+        if module == "analytics":
+            normalized[module] = {
+                "view": actions.get("view", False),
+                "view_all": actions.get("view_all", False)
+            }
+            continue
+
+        # TASK_SCOPE
+        if module == "task_scope":
+            normalized[module] = {
+                "view_all": actions.get("view_all", False),
+                "create_all": actions.get("create_all", False),
+                "update_all": actions.get("update_all", False),
+                "delete_all": actions.get("delete_all", False),
+            }
+            continue
+
+        # DEFAULT MODULES
         view = actions.get("view", False)
-        view_all = actions.get("view_all", False)
         create = actions.get("create", False)
         update = actions.get("update", False)
         delete = actions.get("delete", False)
 
-        # Only task can have view_all
-        if module != "task":
-            view_all = False
-
-        # view_all ⇒ view
-        if view_all:
-            view = True
-
-        # if view = False → everything False
         if not view:
-            if module == "task":
-                normalized[module] = {
-                    "view": False,
-                    "view_all": False,
-                    "create": False,
-                    "update": False,
-                    "delete": False
-                }
-            else:
-                normalized[module] = {
-                    "view": False,
-                    "create": False,
-                    "update": False,
-                    "delete": False
-                }
+            normalized[module] = {
+                "view": False,
+                "create": False,
+                "update": False,
+                "delete": False
+            }
             continue
 
-        # if any action True → view True
-        if create or update or delete:
-            view = True
-
-        if module == "task":
-            normalized[module] = {
-                "view": view,
-                "view_all": view_all,
-                "create": create,
-                "update": update,
-                "delete": delete
-            }
-        else:
-            normalized[module] = {
-                "view": view,
-                "create": create,
-                "update": update,
-                "delete": delete
-            }
+        normalized[module] = {
+            "view": view,
+            "create": create,
+            "update": update,
+            "delete": delete
+        }
 
     return normalized
 
 
 # ======================
-# BUILD ( FULL REBUILD)
+# BUILD PERMISSIONS
 # ======================
 def build_permissions(input_permissions):
 
@@ -113,9 +138,7 @@ def build_permissions(input_permissions):
         for module, action in input_permissions.items()
     }
 
-    #  CLEAN FIRST
     input_dict = clean_input_permissions(input_dict)
-
     normalized = normalize_permissions(input_dict)
 
     final_permissions = {}
@@ -127,9 +150,21 @@ def build_permissions(input_permissions):
 
 
 # ======================
+# FORMAT RESPONSE
+# ======================
+def format_permissions_for_response(perms: dict):
+    formatted = {}
+
+    for module, defaults in DEFAULT_PERMISSIONS.items():
+        formatted[module] = perms.get(module, defaults)
+
+    return formatted
+
+
+# ======================
 # CREATE ROLE
 # ======================
-def create_role(data, db: Session):
+def create_role(data, db: Session, current_user):
 
     existing_role = db.query(Role).filter(Role.name.ilike(data.name)).first()
     if existing_role:
@@ -145,18 +180,19 @@ def create_role(data, db: Session):
     db.commit()
     db.refresh(role)
 
+    log_action(db, current_user.id, "create", "role", role.id)
+
+    role.permissions = format_permissions_for_response(role.permissions)
+
     return role
 
 
 # ======================
 # GET ROLES
 # ======================
-def get_roles(page, limit, db, role_id=None, name=None, description=None):
+def get_roles(page: int, limit: int, db: Session, name: Optional[str] = None, description: Optional[str] = None):
 
     query = db.query(Role)
-
-    if role_id:
-        query = query.filter(Role.id == role_id)
 
     if name:
         query = query.filter(Role.name.ilike(f"%{name}%"))
@@ -166,6 +202,9 @@ def get_roles(page, limit, db, role_id=None, name=None, description=None):
 
     total = query.count()
     total_pages = ceil(total / limit) if total > 0 else 1
+
+    if page > total_pages:
+        raise HTTPException(status_code=400, detail=f"Page exceeds total pages ({total_pages})")
 
     skip = (page - 1) * limit
     roles = query.offset(skip).limit(limit).all()
@@ -180,7 +219,7 @@ def get_roles(page, limit, db, role_id=None, name=None, description=None):
                 "id": r.id,
                 "name": r.name,
                 "description": r.description,
-                "permissions": r.permissions,
+                "permissions": format_permissions_for_response(r.permissions),
                 "user_count": len(r.users)
             }
             for r in roles
@@ -189,9 +228,9 @@ def get_roles(page, limit, db, role_id=None, name=None, description=None):
 
 
 # ======================
-# UPDATE ROLE ( FIXED)
+# UPDATE ROLE
 # ======================
-def update_role(role_id: UUID, data, db: Session):
+def update_role(role_id: UUID, data, db: Session, current_user):
 
     role = db.query(Role).filter(Role.id == role_id).first()
 
@@ -205,11 +244,14 @@ def update_role(role_id: UUID, data, db: Session):
         role.description = data.description
 
     if data.permissions is not None:
-        #  FULL REBUILD (ignore old DB completely)
         role.permissions = build_permissions(data.permissions)
 
     db.commit()
     db.refresh(role)
+
+    log_action(db, current_user.id, "update", "role", role.id)
+
+    role.permissions = format_permissions_for_response(role.permissions)
 
     return role
 
@@ -217,7 +259,7 @@ def update_role(role_id: UUID, data, db: Session):
 # ======================
 # DELETE ROLE
 # ======================
-def delete_role(role_id: UUID, db: Session):
+def delete_role(role_id: UUID, db: Session, current_user):
 
     role = db.query(Role).filter(Role.id == role_id).first()
 
@@ -229,5 +271,7 @@ def delete_role(role_id: UUID, db: Session):
 
     db.delete(role)
     db.commit()
+
+    log_action(db, current_user.id, "delete", "role", role_id)
 
     return {"message": "Role deleted"}

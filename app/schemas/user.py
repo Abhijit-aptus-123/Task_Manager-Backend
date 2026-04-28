@@ -68,7 +68,7 @@ class PaginatedUsers(BaseModel):
     total: int
     page: int
     limit: int
-    offset: int   # 🔥 represents total_pages (as per your requirement)
+    offset: int   # represents total_pages (as per your requirement)
     data: List[UserResponse]
 
 
@@ -80,7 +80,7 @@ class UserMeResponse(BaseModel):
     email: str
     roles: List[RoleBasic]
 
-    # 🔥 merged permissions from all roles
+    # merged permissions from all roles
     permissions: Dict[str, Any]
 
     class Config:
